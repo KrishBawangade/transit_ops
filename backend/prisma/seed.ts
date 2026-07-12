@@ -17,7 +17,7 @@ async function main() {
 
   // 1. Create Core Users
   console.log("👤 Creating user accounts...");
-  const dummyPasswordHash = "$2b$12$eImiTXuGPey1Hg14V6A/L.I1k.D2YFpD1eN4K8C7B.2E6u3B2N1e."; // hashes to 'password123'
+  const dummyPasswordHash = "$2b$10$f3IhvU4M/GTengzYnzouHu61tOr5WEO9Zao3K92mU2xvitkCkoqiS"; // hashes to 'password123'
 
   const fleetManager = await prisma.user.create({
     data: {

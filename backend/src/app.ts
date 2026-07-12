@@ -1,5 +1,6 @@
 import express, { Application, Request, Response, NextFunction } from 'express';
 import cors from 'cors';
+import { AppError } from './shared/errors/app-error';
 
 const app: Application = express();
 
@@ -39,8 +40,17 @@ app.use((req: Request, res: Response) => {
 });
 
 // Global Error Handler
-app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
+app.use((err: any, req: Request, res: Response, next: NextFunction) => {
   console.error('[Error]:', err.stack);
+
+  if (err instanceof AppError) {
+    res.status(err.statusCode).json({
+      status: err.status,
+      message: err.message
+    });
+    return;
+  }
+
   res.status(500).json({
     status: 'error',
     message: 'Internal Server Error',
