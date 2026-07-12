@@ -51,6 +51,7 @@ export function Sidebar({ isOpen, setIsOpen, isMobile = false }: SidebarProps) {
     { href: "/drivers/compliance", label: "Compliance", icon: ClipboardList },
     { href: "/drivers/licenses", label: "Licenses", icon: CreditCard },
     { href: "/drivers/safety-scores", label: "Safety Scores", icon: TrendingUp },
+    { href: "/reports/safety", label: "Safety Reports", icon: FileText },
     { href: "/settings", label: "Settings", icon: Settings },
   ] : role === "driver" ? [
     { href: "/", label: "Dashboard", icon: LayoutDashboard },
