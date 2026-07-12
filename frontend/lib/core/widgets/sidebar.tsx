@@ -15,7 +15,11 @@ import {
   LogOut,
   User as UserIcon,
   CreditCard,
-  ClipboardList
+  ClipboardList,
+  Fuel,
+  PiggyBank,
+  FileText,
+  Sparkles
 } from "lucide-react";
 
 interface SidebarProps {
@@ -49,6 +53,15 @@ export function Sidebar({ isOpen, setIsOpen, isMobile = false }: SidebarProps) {
   ] : role === "driver" ? [
     { href: "/", label: "Dashboard", icon: LayoutDashboard },
     { href: "/settings", label: "Settings", icon: Settings },
+  ] : role === "financial-analyst" ? [
+    { href: "/", label: "Financial Dashboard", icon: LayoutDashboard },
+    { href: "/revenue-analytics", label: "Revenue Analytics", icon: TrendingUp },
+    { href: "/expense-management", label: "Expense Management", icon: CreditCard },
+    { href: "/fuel-cost-analysis", label: "Fuel Cost Analysis", icon: Fuel },
+    { href: "/trip-profitability", label: "Trip Profitability", icon: Route },
+    { href: "/budgets-forecasts", label: "Budgets & Forecasts", icon: PiggyBank },
+    { href: "/reports", label: "Reports", icon: FileText },
+    { href: "/financial-insights", label: "AI Financial Insights", icon: Sparkles },
   ] : [
     { href: "/", label: "Dashboard", icon: LayoutDashboard },
     { href: "/vehicles", label: "Vehicles", icon: Truck, badge: "12" },
@@ -108,7 +121,7 @@ export function Sidebar({ isOpen, setIsOpen, isMobile = false }: SidebarProps) {
                 TransitOps
               </span>
               <span className="text-[10px] text-text-secondary leading-none">
-                Fleet Management
+                Finance & Performance
               </span>
             </div>
           )}
@@ -147,7 +160,7 @@ export function Sidebar({ isOpen, setIsOpen, isMobile = false }: SidebarProps) {
               )}
 
               {/* Badge for items if sidebar is open */}
-              {(isOpen || isMobile) && item.badge && (
+              {(isOpen || isMobile) && (item as any).badge && (
                 <span
                   className={`
                     px-2 py-0.5 text-[11px] font-semibold rounded-circular shrink-0 animate-fadeIn
@@ -158,7 +171,7 @@ export function Sidebar({ isOpen, setIsOpen, isMobile = false }: SidebarProps) {
                     }
                   `}
                 >
-                  {item.badge}
+                  {(item as any).badge}
                 </span>
               )}
 
@@ -166,9 +179,9 @@ export function Sidebar({ isOpen, setIsOpen, isMobile = false }: SidebarProps) {
               {!isOpen && !isMobile && (
                 <div className="absolute left-full ml-4 z-50 invisible group-hover:visible opacity-0 group-hover:opacity-100 transition-all duration-200 bg-gray-900 text-text-on-primary text-xs font-medium px-2 py-1.5 rounded-s shadow-menu whitespace-nowrap">
                   {item.label}
-                  {item.badge && (
+                  {(item as any).badge && (
                     <span className="ml-1.5 px-1.5 py-0.2 bg-primary text-[10px] rounded-circular">
-                      {item.badge}
+                      {(item as any).badge}
                     </span>
                   )}
                 </div>
@@ -185,15 +198,15 @@ export function Sidebar({ isOpen, setIsOpen, isMobile = false }: SidebarProps) {
           className="w-full flex items-center gap-3 overflow-hidden text-left focus:outline-none cursor-pointer group"
         >
           <div className="h-[36px] w-[36px] shrink-0 rounded-circular bg-secondary text-text-on-primary flex items-center justify-center font-semibold shadow-small group-hover:ring-2 group-hover:ring-secondary/20 transition-all">
-            OP
+            FA
           </div>
           {(isOpen || isMobile) && (
             <div className="flex-1 min-w-0 animate-fadeIn">
               <div className="text-xs font-semibold text-text-primary truncate">
-                Operations Lead
+                Financial Analyst
               </div>
               <div className="text-[10px] text-text-secondary truncate font-bold text-primary">
-                {role === "safety-officer" ? "Safety Officer" : role === "driver" ? "Driver" : "Fleet Manager"}
+                {role === "safety-officer" ? "Safety Officer" : role === "driver" ? "Driver" : role === "financial-analyst" ? "Financial Analyst" : "Fleet Manager"}
               </div>
             </div>
           )}
@@ -203,26 +216,37 @@ export function Sidebar({ isOpen, setIsOpen, isMobile = false }: SidebarProps) {
         {profileMenuOpen && (
           <div
             className={`
-              absolute bottom-[60px] z-50 bg-surface-app border border-border-app rounded-m shadow-menu p-1 w-48
+              absolute bottom-[60px] z-50 bg-surface-app border border-border-app rounded-m shadow-menu p-1 w-52
               ${isOpen || isMobile ? "left-4" : "left-2"}
             `}
           >
-             <div className="px-3 py-1.5 text-xs text-text-secondary border-b border-border-app">
-              Role: <span className="font-bold text-primary uppercase">{role === "safety-officer" ? "Safety" : role === "driver" ? "Driver" : "Fleet"}</span>
+             <div className="px-3 py-1.5 text-xs text-text-secondary border-b border-border-app font-medium">
+              Role: <span className="font-bold text-primary uppercase">{role === "safety-officer" ? "Safety" : role === "driver" ? "Driver" : role === "financial-analyst" ? "Finance" : "Fleet"}</span>
             </div>
-            <button
-              onClick={() => {
-                const newRole = role === "fleet-manager" ? "safety-officer" : role === "safety-officer" ? "driver" : "fleet-manager";
-                localStorage.setItem("transit_ops_user_role", newRole);
-                window.dispatchEvent(new Event("storage"));
-                setProfileMenuOpen(false);
-                window.location.href = "/";
-              }}
-              className="w-full flex items-center gap-2 px-3 py-2 text-xs font-medium text-text-primary hover:bg-gray-100 rounded-s text-left transition-colors cursor-pointer"
-            >
-              <Users size={14} className="text-text-secondary" />
-              <span>Switch to {role === "fleet-manager" ? "Safety Officer" : role === "safety-officer" ? "Driver" : "Fleet Manager"}</span>
-            </button>
+            
+            <div className="py-1">
+              {[
+                { name: "Fleet Manager", id: "fleet-manager" },
+                { name: "Safety Officer", id: "safety-officer" },
+                { name: "Driver", id: "driver" },
+                { name: "Financial Analyst", id: "financial-analyst" }
+              ].map((r) => (
+                <button
+                  key={r.id}
+                  onClick={() => {
+                    localStorage.setItem("transit_ops_user_role", r.id);
+                    window.dispatchEvent(new Event("storage"));
+                    setProfileMenuOpen(false);
+                    window.location.href = "/";
+                  }}
+                  className={`w-full flex items-center gap-2 px-3 py-1.5 text-xs text-text-primary hover:bg-gray-100 rounded-s transition-colors text-left cursor-pointer ${role === r.id ? "bg-primary-light text-primary font-semibold" : ""}`}
+                >
+                  <div className={`h-1.5 w-1.5 rounded-full ${role === r.id ? "bg-primary" : "bg-transparent"}`} />
+                  <span>{r.name}</span>
+                </button>
+              ))}
+            </div>
+
             <div className="h-px bg-border-app my-1" />
             <div className="px-3 py-1 text-[10px] text-text-muted">
               Account Options
