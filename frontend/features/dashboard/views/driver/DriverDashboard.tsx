@@ -24,7 +24,8 @@ import {
   Truck,
   Play,
   Fuel,
-  Award
+  Award,
+  Phone
 } from "lucide-react";
 
 export default function DriverDashboard() {
@@ -38,6 +39,64 @@ export default function DriverDashboard() {
   const triggerToast = (msg: string) => {
     setToastMessage(msg);
     setTimeout(() => setToastMessage(null), 4500);
+  };
+
+  const [driverAlerts, setDriverAlerts] = useState([
+    {
+      id: "alert-1",
+      category: "emergency",
+      title: "Immediate Action Required: Route Diversion",
+      description: "Severe weather warning on I-5 North. Heavy mudslides reported near Grapevine. Re-route immediately via Hwy-99.",
+      timestamp: "5 mins ago",
+      priority: "Critical",
+      read: false
+    },
+    {
+      id: "alert-2",
+      category: "new-trip",
+      title: "New Dispatch Assigned",
+      description: "TRP-9486 has been added to your upcoming roster starting at 15:30. Equipment: Volvo FH16 (V-8821).",
+      timestamp: "15 mins ago",
+      priority: "High",
+      read: false
+    },
+    {
+      id: "alert-3",
+      category: "maintenance",
+      title: "Scheduled Rig Safety Inspection",
+      description: "Volvo FH16 (V-8821) is overdue for its cooling system pressure check. Please check in with mechanical team at LAX-4 terminal.",
+      timestamp: "1 hour ago",
+      priority: "Medium",
+      read: true
+    },
+    {
+      id: "alert-4",
+      category: "fuel",
+      title: "Rig Battery State-of-Charge Warning",
+      description: "Tractor battery level dropped below 20% (18% SOC). Next charging hub: Kettleman City (14 km ahead).",
+      timestamp: "2 hours ago",
+      priority: "High",
+      read: true
+    },
+    {
+      id: "alert-5",
+      category: "traffic",
+      title: "Traffic Congestion Ahead",
+      description: "30-minute delay detected on CA-99 South approaching Bakersfield. Automated GPS route adjustment proposed.",
+      timestamp: "3 hours ago",
+      priority: "Low",
+      read: true
+    }
+  ]);
+
+  const handleMarkAsRead = (id: string) => {
+    setDriverAlerts(prev => prev.map(alert => alert.id === id ? { ...alert, read: true } : alert));
+    triggerToast("Notification marked as read.");
+  };
+
+  const handleDismissAlert = (id: string) => {
+    setDriverAlerts(prev => prev.filter(alert => alert.id !== id));
+    triggerToast("Notification dismissed.");
   };
 
   // Notifications Mock Data
@@ -1000,6 +1059,155 @@ export default function DriverDashboard() {
 
         </div>
 
+      </div>
+
+      {/* 6. Notifications & Alerts Section */}
+      <div className="space-y-6 pt-4 border-t border-border-app">
+        <div className="space-y-0.5">
+          <h2 className="text-xl font-bold text-text-primary">Notifications & Alerts</h2>
+          <p className="text-xs text-text-secondary">Stay informed about trips, vehicle status, and important updates.</p>
+        </div>
+
+        {/* 2 Column Layout: Alerts List, Featured Emergency Alert */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          
+          {/* Column 1 & 2: Alerts List */}
+          <div className="lg:col-span-2 space-y-4">
+            {driverAlerts.length === 0 ? (
+              <div className="bg-surface-app border border-border-app p-8 rounded-m text-center space-y-2">
+                <CheckCircle2 size={32} className="text-success mx-auto" />
+                <span className="block text-sm font-bold text-text-primary">All Clear!</span>
+                <span className="block text-xs text-text-secondary">You have dismissed or read all notifications.</span>
+              </div>
+            ) : (
+              driverAlerts.map((alert) => {
+                // Determine icon based on category
+                let IconComponent = Bell;
+                let bgIconColor = "bg-primary-light text-primary";
+                
+                if (alert.category === "emergency") {
+                  IconComponent = AlertTriangle;
+                  bgIconColor = "bg-error-light text-error";
+                } else if (alert.category === "new-trip") {
+                  IconComponent = Route;
+                  bgIconColor = "bg-primary-light text-primary";
+                } else if (alert.category === "maintenance") {
+                  IconComponent = Settings;
+                  bgIconColor = "bg-warning-light text-warning";
+                } else if (alert.category === "fuel") {
+                  IconComponent = Fuel;
+                  bgIconColor = "bg-error-light text-error";
+                } else if (alert.category === "traffic") {
+                  IconComponent = Navigation;
+                  bgIconColor = "bg-warning-light text-warning";
+                }
+
+                return (
+                  <div 
+                    key={alert.id} 
+                    className={`bg-surface-app border p-4 rounded-m shadow-card flex items-start gap-4 hover:border-primary/10 transition-all relative
+                      ${alert.read ? "border-border-app opacity-75" : "border-primary/20 shadow-small"}
+                    `}
+                  >
+                    {/* Unread dot indicator */}
+                    {!alert.read && (
+                      <span className="absolute top-4 right-4 h-2 w-2 bg-primary rounded-circular"></span>
+                    )}
+
+                    {/* Icon Column */}
+                    <div className={`h-9 w-9 rounded-m flex items-center justify-center shrink-0 ${bgIconColor}`}>
+                      <IconComponent size={18} />
+                    </div>
+
+                    {/* Content Column */}
+                    <div className="space-y-1.5 flex-1 min-w-0">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <h4 className="text-xs font-bold text-text-primary truncate">{alert.title}</h4>
+                        
+                        {/* Priority Badge */}
+                        <span className={`inline-block px-1.5 py-0.2 text-[8px] font-bold rounded uppercase tracking-wider border
+                          ${alert.priority === "Critical" ? "bg-error-light text-error border-error/25" : ""}
+                          ${alert.priority === "High" ? "bg-error-light/50 text-error border-error/15" : ""}
+                          ${alert.priority === "Medium" ? "bg-warning-light text-warning border-warning/20" : ""}
+                          ${alert.priority === "Low" ? "bg-gray-100 text-text-secondary border-gray-200" : ""}
+                        `}>
+                          {alert.priority}
+                        </span>
+
+                        <span className="text-[10px] text-text-secondary font-medium ml-auto shrink-0">{alert.timestamp}</span>
+                      </div>
+
+                      <p className="text-xs text-text-secondary leading-relaxed">{alert.description}</p>
+
+                      {/* Action buttons toolbar */}
+                      <div className="flex items-center gap-2 pt-2">
+                        <button 
+                          onClick={() => triggerToast(`Manifest/details sheet opened for notification: ${alert.title}`)}
+                          className="text-[10px] font-bold text-primary hover:underline hover:text-primary-dark transition-all cursor-pointer"
+                        >
+                          View Details
+                        </button>
+                        
+                        {!alert.read && (
+                          <>
+                            <span className="h-2.5 w-px bg-gray-200 inline-block"></span>
+                            <button 
+                              onClick={() => handleMarkAsRead(alert.id)}
+                              className="text-[10px] font-bold text-text-secondary hover:text-text-primary transition-all cursor-pointer"
+                            >
+                              Mark as Read
+                            </button>
+                          </>
+                        )}
+                        
+                        <span className="h-2.5 w-px bg-gray-200 inline-block"></span>
+                        <button 
+                          onClick={() => handleDismissAlert(alert.id)}
+                          className="text-[10px] font-bold text-error hover:underline transition-all cursor-pointer"
+                        >
+                          Dismiss
+                        </button>
+                      </div>
+                    </div>
+
+                  </div>
+                );
+              })
+            )}
+          </div>
+
+          {/* Column 3: Emergency Alert Card */}
+          <div className="bg-error-light/10 border-2 border-error p-6 rounded-m shadow-card flex flex-col justify-between space-y-6">
+            <div className="space-y-4">
+              <div className="flex items-center gap-2 text-error">
+                <AlertTriangle size={24} className="animate-bounce" />
+                <h3 className="text-sm font-extrabold uppercase tracking-wider">Critical Dispatch Alert</h3>
+              </div>
+
+              <div className="space-y-2 text-xs">
+                <p className="font-bold text-text-primary">Dispatch Operations Centre Broadcast:</p>
+                <p className="text-text-secondary leading-relaxed">
+                  Weather Advisory: Dense fog warning in Grapevine Pass. Visibility below 10 meters. Safety guidelines mandate hazard lights and maintaining a minimum 50-meter gap.
+                </p>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <button 
+                onClick={() => triggerToast("Initiating direct sat-link audio connection to Dispatch Operations...")}
+                className="w-full flex h-10 items-center justify-center gap-2 bg-error hover:bg-error/95 text-text-on-primary text-xs font-bold rounded-m transition-all shadow-small cursor-pointer active:scale-95"
+              >
+                <Phone size={14} className="animate-pulse" />
+                <span>Contact Dispatch Centre</span>
+              </button>
+              
+              <span className="block text-[9px] text-text-secondary text-center">
+                Backup Satellite Line: +1 (800) 555-9921
+              </span>
+            </div>
+          </div>
+
+        </div>
       </div>
 
     </div>
