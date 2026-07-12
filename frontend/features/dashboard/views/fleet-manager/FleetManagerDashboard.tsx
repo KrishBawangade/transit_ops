@@ -25,7 +25,8 @@ import {
   Play,
   X,
   Sparkles,
-  ChevronRight
+  ChevronRight,
+  FileText
 } from "lucide-react";
 import Link from "next/link";
 
@@ -359,6 +360,13 @@ export default function FleetManagerDashboard() {
           >
             <Wrench size={13} />
             <span>Maintenance Hub</span>
+          </Link>
+          <Link
+            href="/reports"
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-info-light hover:bg-info/10 border border-info/20 text-info text-xs font-bold rounded-m transition-all cursor-pointer active:scale-95 shadow-small"
+          >
+            <FileText size={13} />
+            <span>Fleet Reports</span>
           </Link>
           <button
             onClick={() => setActiveActionModal("dispatch")}
