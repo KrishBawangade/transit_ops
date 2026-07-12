@@ -1,6 +1,7 @@
 import express, { Application, Request, Response, NextFunction } from 'express';
 import cors from 'cors';
 import { AppError } from './shared/errors/app-error';
+import globalRouter from './routes';
 
 const app: Application = express();
 
@@ -27,6 +28,9 @@ apiRouter.get('/health', (req: Request, res: Response) => {
     uptime: `${Math.floor(process.uptime())}s`
   });
 });
+
+// Apply feature routes
+apiRouter.use('/', globalRouter);
 
 // Apply global API prefix
 app.use('/api', apiRouter);
