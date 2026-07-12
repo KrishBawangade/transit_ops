@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { 
@@ -34,9 +34,17 @@ const navItems = [
 export function Sidebar({ isOpen, setIsOpen, isMobile = false }: SidebarProps) {
   const pathname = usePathname();
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   // Active check helper
   const isActive = (href: string) => {
+    if (!mounted || !pathname) {
+      return false;
+    }
     if (href === "/") {
       return pathname === "/";
     }
