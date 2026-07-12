@@ -51,6 +51,7 @@ export function Sidebar({ isOpen, setIsOpen, isMobile = false }: SidebarProps) {
     { href: "/drivers/compliance", label: "Compliance", icon: ClipboardList },
     { href: "/drivers/licenses", label: "Licenses", icon: CreditCard },
     { href: "/drivers/safety-scores", label: "Safety Scores", icon: TrendingUp },
+    { href: "/reports/safety", label: "Safety Reports", icon: FileText },
     { href: "/settings", label: "Settings", icon: Settings },
   ] : role === "driver" ? [
     { href: "/", label: "Dashboard", icon: LayoutDashboard },
@@ -69,7 +70,6 @@ export function Sidebar({ isOpen, setIsOpen, isMobile = false }: SidebarProps) {
     { href: "/vehicles", label: "Vehicles", icon: Truck, badge: "12" },
     { href: "/vehicles/assignments", label: "Assignments", icon: ClipboardList },
     { href: "/drivers", label: "Drivers", icon: Users, badge: "8" },
-    { href: "/trips", label: "Trips", icon: Route },
     { href: "/settings", label: "Settings", icon: Settings },
   ];
 
