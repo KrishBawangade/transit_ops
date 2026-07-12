@@ -43,12 +43,12 @@ export default function TripsPage() {
         </div>
         <h3 className="text-base font-semibold text-text-primary">Trips Dispatch Feature Roster</h3>
         <p className="text-sm text-text-secondary max-w-sm mt-1 mb-6">
-          This page represents the entry point for the Trips feature. Your teammates can now import components from the <code className="px-1.5 py-0.5 bg-gray-100 rounded text-primary font-mono text-xs">lib/features/trips</code> folder to build interactive routing maps, live status timelines, and optimization grids.
+          This page represents the entry point for the Trips feature. Your teammates can now import components from the <code className="px-1.5 py-0.5 bg-gray-100 rounded text-primary font-mono text-xs">features/trips</code> folder to build interactive routing maps, live status timelines, and optimization grids.
         </p>
         <div className="flex flex-col sm:flex-row gap-3 text-xs">
           <div className="px-4 py-3 bg-gray-50 border border-border-app rounded-m text-left">
             <span className="font-semibold text-text-primary block">📍 Features Folder</span>
-            <span className="text-text-secondary mt-1 block">`lib/features/trips/components`</span>
+            <span className="text-text-secondary mt-1 block">`features/trips/components`</span>
           </div>
           <div className="px-4 py-3 bg-gray-50 border border-border-app rounded-m text-left">
             <span className="font-semibold text-text-primary block">🗺️ Live Feeds</span>
