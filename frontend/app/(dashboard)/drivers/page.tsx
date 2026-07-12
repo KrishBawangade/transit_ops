@@ -4,11 +4,23 @@ import { useEffect, useState } from "react";
 import { Users, Plus, Filter, Search, Star, Trash2, Edit3, ShieldAlert, CheckCircle2, X, RefreshCw } from "lucide-react";
 import { DriverCompliance } from "@/features/drivers/views/safety-officer/DriverCompliance";
 import { driverService } from "@/features/drivers/services/driver.service";
+import { apiClient } from "@/lib/core/services/api-client";
 
 export default function DriversPage() {
   const [role, setRole] = useState("fleet-manager");
   const [drivers, setDrivers] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isAddDriverOpen, setIsAddDriverOpen] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [addForm, setAddForm] = useState({
+    firstName: "",
+    lastName: "",
+    email: "",
+    phone: "",
+    licenseNumber: "",
+    licenseClass: "Class A CDL",
+    licenseExpiry: new Date(Date.now() + 365*24*60*60*1000*5).toISOString().split("T")[0]
+  });
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedStatus, setSelectedStatus] = useState<string>("ALL");
   const [toastMessage, setToastMessage] = useState<string | null>(null);
@@ -29,25 +41,68 @@ export default function DriversPage() {
     return () => window.removeEventListener("storage", handleStorage);
   }, []);
 
+  const loadDrivers = async () => {
+    setIsLoading(true);
+    try {
+      const response = await driverService.listDrivers();
+      console.log("DRIVERS RESP RECEIVED:", response);
+      if (response && response.data && response.data.length > 0) {
+        setDrivers(response.data);
+      } else {
+        setDrivers(mockDrivers);
+      }
+    } catch (err) {
+      console.error("DRIVERS FETCH ERROR:", err);
+      setDrivers(mockDrivers);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   // Fetch or set initial mock data
   useEffect(() => {
-    const loadDrivers = async () => {
-      setIsLoading(true);
-      try {
-        const response = await driverService.listDrivers();
-        if (response && response.data && response.data.length > 0) {
-          setDrivers(response.data);
-        } else {
-          setDrivers(mockDrivers);
-        }
-      } catch (err) {
-        setDrivers(mockDrivers);
-      } finally {
-        setIsLoading(false);
-      }
-    };
     loadDrivers();
   }, []);
+
+  const handleAddDriverSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSaving(true);
+    try {
+      await apiClient.post("/auth/register", {
+        userData: {
+          email: addForm.email,
+          password: "password123",
+          firstName: addForm.firstName,
+          lastName: addForm.lastName,
+          phone: addForm.phone || undefined,
+          role: "DRIVER"
+        },
+        driverData: {
+          licenseNumber: addForm.licenseNumber,
+          licenseClass: addForm.licenseClass,
+          licenseExpiry: new Date(addForm.licenseExpiry).toISOString()
+        }
+      });
+
+      triggerToast(`Driver ${addForm.firstName} ${addForm.lastName} registered successfully.`);
+      setIsAddDriverOpen(false);
+      setAddForm({
+        firstName: "",
+        lastName: "",
+        email: "",
+        phone: "",
+        licenseNumber: "",
+        licenseClass: "Class A CDL",
+        licenseExpiry: new Date(Date.now() + 365*24*60*60*1000*5).toISOString().split("T")[0]
+      });
+      loadDrivers();
+    } catch (err: any) {
+      console.error(err);
+      triggerToast(err.message || "Failed to register driver in database.");
+    } finally {
+      setIsSaving(false);
+    }
+  };
 
   const handleDeleteDriver = (id: string, name: string) => {
     setDrivers(prev => prev.filter(d => d.id !== id));
@@ -100,7 +155,7 @@ export default function DriversPage() {
         </div>
         <button
           className="flex h-9 items-center gap-1.5 px-3 rounded-m bg-primary text-text-on-primary text-xs font-semibold hover:bg-primary/95 transition-all shadow-small self-start md:self-auto cursor-pointer active:scale-95"
-          onClick={() => triggerToast("Driver registration module activated. Dispatch operations initialized.")}
+          onClick={() => setIsAddDriverOpen(true)}
         >
           <Plus size={16} />
           <span>Add New Driver</span>
@@ -168,7 +223,9 @@ export default function DriversPage() {
               </thead>
               <tbody className="divide-y divide-gray-100 text-xs">
                 {filteredDrivers.map((driver) => {
-                  const name = driver.user?.name || "Unassigned User";
+                  const name = driver.user 
+                    ? (driver.user.name || `${driver.user.firstName} ${driver.user.lastName}`) 
+                    : "Unassigned User";
                   const email = driver.user?.email || "No email info";
                   const rating = Number(driver.rating ?? 5.0);
 
@@ -178,7 +235,7 @@ export default function DriversPage() {
                       {/* Driver Info */}
                       <td className="py-3 px-4">
                         <div className="flex items-center gap-3">
-                          <div className="h-8 w-8 rounded-circular bg-primary-light text-primary flex items-center justify-center font-bold text-xs shrink-0">
+                          <div className="h-40 w-40 rounded-circular bg-primary text-text-on-primary flex items-center justify-center font-bold text-sm shrink-0 uppercase shadow-small">
                             {name.charAt(0)}
                           </div>
                           <div className="min-w-0">
@@ -252,6 +309,158 @@ export default function DriversPage() {
           </div>
         )}
       </div>
+
+      {/* Add Driver Dialog Modal */}
+      {isAddDriverOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
+          <div className="w-full max-w-md bg-surface-app border border-border-app rounded-m shadow-dialog animate-fadeIn overflow-hidden">
+            
+            {/* Header */}
+            <div className="flex items-center justify-between border-b border-border-app px-5 py-4 bg-gray-50/50">
+              <div className="flex items-center gap-2">
+                <div className="h-7 w-7 rounded-circular bg-primary-light text-primary flex items-center justify-center">
+                  <Plus size={16} />
+                </div>
+                <h3 className="font-bold text-sm text-text-primary">Add New Commercial Driver</h3>
+              </div>
+              <button 
+                type="button"
+                onClick={() => !isSaving && setIsAddDriverOpen(false)}
+                className="text-text-muted hover:text-text-primary hover:bg-gray-150 p-1 rounded-m transition-all cursor-pointer"
+                disabled={isSaving}
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            {/* Form */}
+            <form onSubmit={handleAddDriverSubmit} className="p-5 space-y-4 font-sans">
+              
+              {/* Name fields */}
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold uppercase tracking-wider text-text-secondary">First Name *</label>
+                  <input
+                    type="text"
+                    required
+                    value={addForm.firstName}
+                    onChange={e => setAddForm(prev => ({ ...prev, firstName: e.target.value }))}
+                    placeholder="John"
+                    className="w-full h-9 px-3 rounded-m border border-border-app text-xs bg-gray-50 text-text-primary focus:outline-none focus:border-primary focus:bg-white transition-all"
+                    disabled={isSaving}
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold uppercase tracking-wider text-text-secondary">Last Name *</label>
+                  <input
+                    type="text"
+                    required
+                    value={addForm.lastName}
+                    onChange={e => setAddForm(prev => ({ ...prev, lastName: e.target.value }))}
+                    placeholder="Doe"
+                    className="w-full h-9 px-3 rounded-m border border-border-app text-xs bg-gray-50 text-text-primary focus:outline-none focus:border-primary focus:bg-white transition-all"
+                    disabled={isSaving}
+                  />
+                </div>
+              </div>
+
+              {/* Contact fields */}
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold uppercase tracking-wider text-text-secondary">Email Address *</label>
+                <input
+                  type="email"
+                  required
+                  value={addForm.email}
+                  onChange={e => setAddForm(prev => ({ ...prev, email: e.target.value }))}
+                  placeholder="john.doe@transitops.com"
+                  className="w-full h-9 px-3 rounded-m border border-border-app text-xs bg-gray-50 text-text-primary focus:outline-none focus:border-primary focus:bg-white transition-all"
+                  disabled={isSaving}
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold uppercase tracking-wider text-text-secondary">Phone Number</label>
+                <input
+                  type="text"
+                  value={addForm.phone}
+                  onChange={e => setAddForm(prev => ({ ...prev, phone: e.target.value }))}
+                  placeholder="+1 (555) 019-2834"
+                  className="w-full h-9 px-3 rounded-m border border-border-app text-xs bg-gray-50 text-text-primary focus:outline-none focus:border-primary focus:bg-white transition-all"
+                  disabled={isSaving}
+                />
+              </div>
+
+              {/* License Details */}
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold uppercase tracking-wider text-text-secondary">License Number *</label>
+                <input
+                  type="text"
+                  required
+                  value={addForm.licenseNumber}
+                  onChange={e => setAddForm(prev => ({ ...prev, licenseNumber: e.target.value }))}
+                  placeholder="DL-9382098"
+                  className="w-full h-9 px-3 rounded-m border border-border-app text-xs bg-gray-50 text-text-primary focus:outline-none focus:border-primary focus:bg-white transition-all"
+                  disabled={isSaving}
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold uppercase tracking-wider text-text-secondary">License Class</label>
+                  <select
+                    value={addForm.licenseClass}
+                    onChange={e => setAddForm(prev => ({ ...prev, licenseClass: e.target.value }))}
+                    className="w-full h-9 px-3 rounded-m border border-border-app text-xs bg-gray-50 text-text-primary focus:outline-none focus:border-primary focus:bg-white transition-all"
+                    disabled={isSaving}
+                  >
+                    <option value="Class A CDL">Class A CDL</option>
+                    <option value="Class B CDL">Class B CDL</option>
+                    <option value="Class C CDL">Class C CDL</option>
+                  </select>
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold uppercase tracking-wider text-text-secondary">Expiry Date *</label>
+                  <input
+                    type="date"
+                    required
+                    value={addForm.licenseExpiry}
+                    onChange={e => setAddForm(prev => ({ ...prev, licenseExpiry: e.target.value }))}
+                    className="w-full h-9 px-3 rounded-m border border-border-app text-xs bg-gray-50 text-text-primary focus:outline-none focus:border-primary focus:bg-white transition-all"
+                    disabled={isSaving}
+                  />
+                </div>
+              </div>
+
+              {/* Actions Footer */}
+              <div className="flex items-center justify-end gap-2 pt-3 border-t border-border-app mt-4">
+                <button
+                  type="button"
+                  onClick={() => setIsAddDriverOpen(false)}
+                  className="px-4 h-9 rounded-m border border-border-app hover:bg-gray-50 text-text-secondary font-bold text-xs cursor-pointer"
+                  disabled={isSaving}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 h-9 rounded-m bg-primary hover:bg-primary/95 text-text-on-primary font-bold text-xs flex items-center gap-1.5 cursor-pointer shadow-small active:scale-95 disabled:opacity-50"
+                  disabled={isSaving}
+                >
+                  {isSaving ? (
+                    <>
+                      <RefreshCw size={13} className="animate-spin" />
+                      <span>Saving...</span>
+                    </>
+                  ) : (
+                    <span>Register Driver</span>
+                  )}
+                </button>
+              </div>
+
+            </form>
+          </div>
+        </div>
+      )}
 
     </div>
   );
