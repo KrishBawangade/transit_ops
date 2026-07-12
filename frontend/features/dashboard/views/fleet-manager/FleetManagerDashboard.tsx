@@ -26,7 +26,8 @@ import {
   X,
   Sparkles,
   ChevronRight,
-  FileText
+  FileText,
+  Layers
 } from "lucide-react";
 import Link from "next/link";
 
@@ -367,6 +368,13 @@ export default function FleetManagerDashboard() {
           >
             <FileText size={13} />
             <span>Fleet Reports</span>
+          </Link>
+          <Link
+            href="/lifecycle"
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-secondary-light hover:bg-secondary/10 border border-secondary/20 text-secondary text-xs font-bold rounded-m transition-all cursor-pointer active:scale-95 shadow-small"
+          >
+            <Layers size={13} />
+            <span>Asset Lifecycle</span>
           </Link>
           <button
             onClick={() => setActiveActionModal("dispatch")}
