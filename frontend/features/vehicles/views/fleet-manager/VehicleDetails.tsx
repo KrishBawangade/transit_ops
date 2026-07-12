@@ -4,8 +4,9 @@ import React, { useEffect, useState, useRef } from "react";
 import { ArrowLeft, Edit, Calendar, DollarSign, Activity, FileText, AlertTriangle, ShieldAlert, CheckCircle2, Truck, Upload, Download, Trash2, Eye, FileUp, Check } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Vehicle, VehicleDocument } from "../../types";
+import { Vehicle, VehicleDocument, VehicleAssignment } from "../../types";
 import { vehicleService } from "../../services/vehicle.service";
+import { vehicleAssignmentService } from "../../services/vehicleAssignment.service";
 import { VehicleStatusBadge } from "../../components/VehicleStatusBadge";
 
 interface VehicleDetailsProps {
@@ -24,6 +25,22 @@ export function VehicleDetails({ id }: VehicleDetailsProps) {
   // Document states
   const [documents, setDocuments] = useState<VehicleDocument[]>([]);
   const [isDocsLoading, setIsDocsLoading] = useState(false);
+
+  // Assignment states
+  const [assignment, setAssignment] = useState<VehicleAssignment | null>(null);
+
+  useEffect(() => {
+    async function loadAssignment() {
+      try {
+        const asgs = await vehicleAssignmentService.getAssignments();
+        const active = asgs.find((a) => a.vehicleId === id && a.status === "Assigned");
+        setAssignment(active || null);
+      } catch (err) {
+        console.error("Failed to load assignment info", err);
+      }
+    }
+    loadAssignment();
+  }, [id, vehicle]);
   
   // Document modal states
   const [isDocModalOpen, setIsDocModalOpen] = useState(false);
@@ -382,6 +399,21 @@ export function VehicleDetails({ id }: VehicleDetailsProps) {
                   <dt className="text-text-secondary font-medium">Current Status</dt>
                   <dd className="text-text-primary mt-0.5">
                     <VehicleStatusBadge status={vehicle.status} />
+                  </dd>
+                </div>
+                <div>
+                  <dt className="text-text-secondary font-medium">Assigned Driver</dt>
+                  <dd className="text-text-primary font-semibold mt-0.5">
+                    {assignment ? (
+                      <Link
+                        href="/vehicles/assignments"
+                        className="text-primary hover:underline font-bold"
+                      >
+                        {assignment.driverName}
+                      </Link>
+                    ) : (
+                      <span className="text-text-muted">Unassigned</span>
+                    )}
                   </dd>
                 </div>
               </dl>
