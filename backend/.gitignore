@@ -1,0 +1,23 @@
+# Dependency directories
+node_modules/
+
+# Build directory
+dist/
+
+# Environment variables
+.env
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Prisma
+/prisma/migrations/
+# Note: Usually we commit migrations, but let's check user instructions:
+# "Create a README explaining... how to run migrations"
+# So migrations should be tracked in Git. Let's not ignore migrations.
+# Just node_modules, dist, and .env.
+
+/src/generated/prisma
