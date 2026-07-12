@@ -1,8 +1,27 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { Users, Plus, Filter, Search } from "lucide-react";
+import { DriverCompliance } from "@/features/drivers/views/safety-officer/DriverCompliance";
 
 export default function DriversPage() {
+  const [role, setRole] = useState("fleet-manager");
+
+  useEffect(() => {
+    const activeRole = localStorage.getItem("transit_ops_user_role") || "fleet-manager";
+    setRole(activeRole);
+
+    const handleStorage = () => {
+      setRole(localStorage.getItem("transit_ops_user_role") || "fleet-manager");
+    };
+    window.addEventListener("storage", handleStorage);
+    return () => window.removeEventListener("storage", handleStorage);
+  }, []);
+
+  if (role === "safety-officer") {
+    return <DriverCompliance />;
+  }
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -12,7 +31,7 @@ export default function DriversPage() {
           <p className="text-sm text-text-secondary">Manage commercial drivers, shift schedules, licenses, and safety metrics.</p>
         </div>
         <button
-          className="flex h-9 items-center gap-1.5 px-3 rounded-m bg-primary text-text-on-primary text-xs font-semibold hover:bg-primary/95 transition-all shadow-small self-start md:self-auto"
+          className="flex h-9 items-center gap-1.5 px-3 rounded-m bg-primary text-text-on-primary text-xs font-semibold hover:bg-primary/95 transition-all shadow-small self-start md:self-auto cursor-pointer"
           onClick={() => {}}
         >
           <Plus size={16} />

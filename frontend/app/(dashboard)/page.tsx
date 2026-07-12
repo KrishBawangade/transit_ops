@@ -1,11 +1,29 @@
+"use client";
+
+import { useEffect, useState } from "react";
 import FleetManagerDashboard from "@/features/dashboard/views/fleet-manager/FleetManagerDashboard";
 import DriverDashboard from "@/features/dashboard/views/driver/DriverDashboard";
+import { DriverCompliance } from "@/features/drivers/views/safety-officer/DriverCompliance";
 
 export default function DashboardPage() {
-  // Role-based control: hardcoded to 'driver' to preview the driver POV
-  const userRole: "fleet-manager" | "driver" = "driver";
+  const [role, setRole] = useState("fleet-manager");
 
-  if (userRole === "driver") {
+  useEffect(() => {
+    const activeRole = localStorage.getItem("transit_ops_user_role") || "fleet-manager";
+    setRole(activeRole);
+
+    const handleStorage = () => {
+      setRole(localStorage.getItem("transit_ops_user_role") || "fleet-manager");
+    };
+    window.addEventListener("storage", handleStorage);
+    return () => window.removeEventListener("storage", handleStorage);
+  }, []);
+
+  if (role === "safety-officer") {
+    return <DriverCompliance />;
+  }
+
+  if (role === "driver") {
     return <DriverDashboard />;
   }
 

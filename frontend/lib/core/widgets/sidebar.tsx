@@ -24,23 +24,39 @@ interface SidebarProps {
   isMobile?: boolean;
 }
 
-const navItems = [
-  { href: "/", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/vehicles", label: "Vehicles", icon: Truck, badge: "12" },
-  { href: "/vehicles/assignments", label: "Assignments", icon: ClipboardList },
-  { href: "/drivers", label: "Drivers", icon: Users, badge: "8" },
-  { href: "/trips", label: "Trips", icon: Route },
-  { href: "/settings", label: "Settings", icon: Settings },
-];
-
 export function Sidebar({ isOpen, setIsOpen, isMobile = false }: SidebarProps) {
   const pathname = usePathname();
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
+  const [role, setRole] = useState("fleet-manager");
 
   useEffect(() => {
     setMounted(true);
+    const activeRole = localStorage.getItem("transit_ops_user_role") || "fleet-manager";
+    setRole(activeRole);
+
+    const handleStorage = () => {
+      setRole(localStorage.getItem("transit_ops_user_role") || "fleet-manager");
+    };
+    window.addEventListener("storage", handleStorage);
+    return () => window.removeEventListener("storage", handleStorage);
   }, []);
+
+  const navItems = role === "safety-officer" ? [
+    { href: "/", label: "Dashboard", icon: LayoutDashboard },
+    { href: "/drivers/compliance", label: "Compliance", icon: ClipboardList },
+    { href: "/settings", label: "Settings", icon: Settings },
+  ] : role === "driver" ? [
+    { href: "/", label: "Dashboard", icon: LayoutDashboard },
+    { href: "/settings", label: "Settings", icon: Settings },
+  ] : [
+    { href: "/", label: "Dashboard", icon: LayoutDashboard },
+    { href: "/vehicles", label: "Vehicles", icon: Truck, badge: "12" },
+    { href: "/vehicles/assignments", label: "Assignments", icon: ClipboardList },
+    { href: "/drivers", label: "Drivers", icon: Users, badge: "8" },
+    { href: "/trips", label: "Trips", icon: Route },
+    { href: "/settings", label: "Settings", icon: Settings },
+  ];
 
   // Active check helper
   const isActive = (href: string) => {
@@ -176,8 +192,8 @@ export function Sidebar({ isOpen, setIsOpen, isMobile = false }: SidebarProps) {
               <div className="text-xs font-semibold text-text-primary truncate">
                 Operations Lead
               </div>
-              <div className="text-[10px] text-text-secondary truncate">
-                ops@transitops.com
+              <div className="text-[10px] text-text-secondary truncate font-bold text-primary">
+                {role === "safety-officer" ? "Safety Officer" : role === "driver" ? "Driver" : "Fleet Manager"}
               </div>
             </div>
           )}
@@ -191,7 +207,24 @@ export function Sidebar({ isOpen, setIsOpen, isMobile = false }: SidebarProps) {
               ${isOpen || isMobile ? "left-4" : "left-2"}
             `}
           >
-            <div className="px-3 py-1.5 text-xs text-text-secondary border-b border-border-app">
+             <div className="px-3 py-1.5 text-xs text-text-secondary border-b border-border-app">
+              Role: <span className="font-bold text-primary uppercase">{role === "safety-officer" ? "Safety" : role === "driver" ? "Driver" : "Fleet"}</span>
+            </div>
+            <button
+              onClick={() => {
+                const newRole = role === "fleet-manager" ? "safety-officer" : role === "safety-officer" ? "driver" : "fleet-manager";
+                localStorage.setItem("transit_ops_user_role", newRole);
+                window.dispatchEvent(new Event("storage"));
+                setProfileMenuOpen(false);
+                window.location.href = "/";
+              }}
+              className="w-full flex items-center gap-2 px-3 py-2 text-xs font-medium text-text-primary hover:bg-gray-100 rounded-s text-left transition-colors cursor-pointer"
+            >
+              <Users size={14} className="text-text-secondary" />
+              <span>Switch to {role === "fleet-manager" ? "Safety Officer" : role === "safety-officer" ? "Driver" : "Fleet Manager"}</span>
+            </button>
+            <div className="h-px bg-border-app my-1" />
+            <div className="px-3 py-1 text-[10px] text-text-muted">
               Account Options
             </div>
             <button
