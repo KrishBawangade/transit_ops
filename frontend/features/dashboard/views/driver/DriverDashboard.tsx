@@ -216,7 +216,10 @@ export default function DriverDashboard() {
           <div className="flex items-start justify-between">
             <div className="space-y-1">
               <span className="text-[10px] font-bold text-text-secondary uppercase tracking-wider block">Today's Trips</span>
-              <span className="text-3xl font-extrabold text-text-primary block">4 Trips</span>
+              <div className="flex items-baseline gap-1 mt-1">
+                <span className="text-2xl font-extrabold text-text-primary">4</span>
+                <span className="text-xs font-bold text-text-secondary">Trips</span>
+              </div>
             </div>
             <div className="h-10 w-10 rounded-m bg-primary-light text-primary flex items-center justify-center shadow-small group-hover:scale-105 transition-transform duration-200">
               <Route size={18} />
@@ -235,7 +238,11 @@ export default function DriverDashboard() {
           <div className="flex items-start justify-between">
             <div className="space-y-1">
               <span className="text-[10px] font-bold text-text-secondary uppercase tracking-wider block">Active Trip</span>
-              <span className="text-xl font-extrabold text-primary block mt-1">TRP-9482</span>
+              <div className="mt-1.5">
+                <span className="text-xs font-mono font-bold text-primary bg-primary-light border border-primary/20 px-2 py-1 rounded">
+                  TRP-9482
+                </span>
+              </div>
             </div>
             <div className="h-10 w-10 rounded-m bg-secondary-light text-secondary flex items-center justify-center shadow-small group-hover:scale-105 transition-transform duration-200">
               <Navigation size={18} className="animate-pulse" />
@@ -243,7 +250,7 @@ export default function DriverDashboard() {
           </div>
           <div className="mt-4 pt-3 border-t border-gray-100 flex items-center justify-between text-xs">
             <span className="text-text-secondary font-medium">Route: SFO ➔ LAX</span>
-            <span className="font-bold px-1.5 py-0.2 bg-success-light text-success text-[10px] rounded uppercase tracking-wider border border-success/20">
+            <span className="font-bold px-1.5 py-0.2 bg-success-light text-success text-[10px] rounded uppercase tracking-wider border border-success/20 animate-pulse">
               In Progress
             </span>
           </div>
@@ -254,7 +261,10 @@ export default function DriverDashboard() {
           <div className="flex items-start justify-between">
             <div className="space-y-1">
               <span className="text-[10px] font-bold text-text-secondary uppercase tracking-wider block">Completed</span>
-              <span className="text-3xl font-extrabold text-success block">12 / 15</span>
+              <div className="flex items-baseline gap-1 mt-1">
+                <span className="text-2xl font-extrabold text-success">12</span>
+                <span className="text-xs font-bold text-text-secondary">/ 15</span>
+              </div>
             </div>
             <div className="h-10 w-10 rounded-m bg-success-light text-success flex items-center justify-center shadow-small group-hover:scale-105 transition-transform duration-200">
               <CheckCircle2 size={18} />
@@ -276,7 +286,10 @@ export default function DriverDashboard() {
           <div className="flex items-start justify-between">
             <div className="space-y-1">
               <span className="text-[10px] font-bold text-text-secondary uppercase tracking-wider block">Pending</span>
-              <span className="text-3xl font-extrabold text-warning block">3 Left</span>
+              <div className="flex items-baseline gap-1 mt-1">
+                <span className="text-2xl font-extrabold text-warning">3</span>
+                <span className="text-xs font-bold text-text-secondary">Left</span>
+              </div>
             </div>
             <div className="h-10 w-10 rounded-m bg-warning-light text-warning flex items-center justify-center shadow-small group-hover:scale-105 transition-transform duration-200">
               <Clock size={18} />
@@ -295,7 +308,10 @@ export default function DriverDashboard() {
           <div className="flex items-start justify-between">
             <div className="space-y-1">
               <span className="text-[10px] font-bold text-text-secondary uppercase tracking-wider block">Distance Today</span>
-              <span className="text-3xl font-extrabold text-text-primary block">284 km</span>
+              <div className="flex items-baseline gap-1 mt-1">
+                <span className="text-2xl font-extrabold text-text-primary">284</span>
+                <span className="text-xs font-bold text-text-secondary">km</span>
+              </div>
             </div>
             <div className="h-10 w-10 rounded-m bg-info-light text-info flex items-center justify-center shadow-small group-hover:scale-105 transition-transform duration-200">
               <Gauge size={18} />
@@ -314,7 +330,10 @@ export default function DriverDashboard() {
           <div className="flex items-start justify-between">
             <div className="space-y-1">
               <span className="text-[10px] font-bold text-text-secondary uppercase tracking-wider block">Driver Rating</span>
-              <span className="text-3xl font-extrabold text-text-primary block">4.92</span>
+              <div className="flex items-baseline gap-1 mt-1">
+                <span className="text-2xl font-extrabold text-text-primary">4.92</span>
+                <span className="text-xs text-warning font-bold">★</span>
+              </div>
             </div>
             <div className="h-10 w-10 rounded-m bg-warning-light text-warning flex items-center justify-center shadow-small group-hover:scale-105 transition-transform duration-200">
               <Star size={18} className="fill-warning" />
