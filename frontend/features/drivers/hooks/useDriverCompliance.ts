@@ -101,6 +101,7 @@ export function useDriverCompliance() {
 
   return {
     records: paginatedRecords,
+    allRecords: processedRecords,
     totalItems,
     totalPages,
     page,

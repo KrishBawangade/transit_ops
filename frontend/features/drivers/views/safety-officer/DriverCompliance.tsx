@@ -26,7 +26,8 @@ export function DriverCompliance() {
     setLicenseTypeFilter,
     sortBy,
     sortOrder,
-    handleSort
+    handleSort,
+    allRecords
   } = useDriverCompliance();
 
   const handleViewClick = (record: DriverComplianceType) => {
@@ -35,15 +36,17 @@ export function DriverCompliance() {
 
   // Compute metric summaries from active state
   const metrics = useMemo(() => {
-    // Note: Normally we'd compute this from the entire list (non-paginated)
-    // We can do that by fetching all records.
+    const total = allRecords?.length || 0;
+    const compliant = allRecords?.filter(r => r.status === "Compliant").length || 0;
+    const expiringSoon = allRecords?.filter(r => r.status === "Expiring Soon").length || 0;
+    const expired = allRecords?.filter(r => r.status === "Expired").length || 0;
     return {
-      total: 6,
-      compliant: 2,
-      expiringSoon: 2,
-      expired: 2
+      total,
+      compliant,
+      expiringSoon,
+      expired
     };
-  }, []);
+  }, [allRecords]);
 
   const handleExport = () => {
     alert("Simulating export of Driver Compliance Report. CSV file is compiling...");
