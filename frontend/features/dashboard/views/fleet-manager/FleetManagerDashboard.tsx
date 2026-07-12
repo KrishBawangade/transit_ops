@@ -376,6 +376,13 @@ export default function FleetManagerDashboard() {
             <Layers size={13} />
             <span>Asset Lifecycle</span>
           </Link>
+          <Link
+            href="/drivers"
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-success-light hover:bg-success/10 border border-success/20 text-success text-xs font-bold rounded-m transition-all cursor-pointer active:scale-95 shadow-small"
+          >
+            <Users size={13} />
+            <span>Driver Roster</span>
+          </Link>
           <button
             onClick={() => setActiveActionModal("dispatch")}
             className="flex items-center gap-1.5 px-3 py-1.5 bg-secondary-light hover:bg-secondary/10 border border-secondary/20 text-secondary text-xs font-bold rounded-m transition-all cursor-pointer active:scale-95 shadow-small"

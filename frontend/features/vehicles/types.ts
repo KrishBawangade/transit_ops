@@ -28,3 +28,20 @@ export interface Vehicle {
   status: VehicleStatus;
   notes?: string;
 }
+
+export interface Driver {
+  id: string;
+  name: string;
+}
+
+export interface VehicleAssignment {
+  id: string;
+  vehicleId: string;
+  vehicleName: string;
+  registrationNumber: string;
+  driverId: string;
+  driverName: string;
+  assignmentDate: string; // YYYY-MM-DD
+  status: "Assigned" | "Available" | "Inactive";
+  remarks?: string;
+}
