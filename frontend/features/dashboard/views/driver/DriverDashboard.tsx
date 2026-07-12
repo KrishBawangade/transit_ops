@@ -21,7 +21,8 @@ import {
   TrendingUp,
   AlertTriangle,
   MapPin,
-  Truck
+  Truck,
+  Play
 } from "lucide-react";
 
 export default function DriverDashboard() {
@@ -534,6 +535,154 @@ export default function DriverDashboard() {
           </button>
         </div>
 
+      </div>
+
+      {/* 4. Today's Schedule Section */}
+      <div className="space-y-4 pt-2">
+        <div className="space-y-0.5">
+          <h2 className="text-xl font-bold text-text-primary">Today's Schedule</h2>
+          <p className="text-xs text-text-secondary">View and manage your assigned trips for today.</p>
+        </div>
+
+        {/* Vertical Timeline wrapper */}
+        <div className="relative border-l-2 border-gray-100 ml-4 pl-8 space-y-6 py-2">
+          
+          {/* Timeline node connector path */}
+          {(() => {
+            const scheduleTrips = [
+              {
+                id: "TRP-9480",
+                pickup: "Oakland Depot (OAK-2)",
+                destination: "San Francisco Cargo Depot (SFO-1)",
+                scheduledTime: "06:00 AM - 07:30 AM",
+                duration: "1.5h",
+                priority: "Medium",
+                status: "Completed" as const,
+                color: "success"
+              },
+              {
+                id: "TRP-9482",
+                pickup: "San Francisco Cargo Depot (SFO-1)",
+                destination: "Los Angeles Port Terminal (LAX-4)",
+                scheduledTime: "08:00 AM - 02:35 PM",
+                duration: "6.5h",
+                priority: "High",
+                status: "In Progress" as const,
+                color: "primary"
+              },
+              {
+                id: "TRP-9486",
+                pickup: "Los Angeles Port Terminal (LAX-4)",
+                destination: "San Diego Distribution Center (SAN-2)",
+                scheduledTime: "03:30 PM - 05:45 PM",
+                duration: "2.25h",
+                priority: "Low",
+                status: "Upcoming" as const,
+                color: "warning"
+              }
+            ];
+
+            return scheduleTrips.map((trip) => {
+              const isCompleted = trip.status === "Completed";
+              const isActive = trip.status === "In Progress";
+              const isUpcoming = trip.status === "Upcoming";
+
+              return (
+                <div key={trip.id} className="relative">
+                  {/* Timeline node icon */}
+                  <div className={`absolute -left-[46px] top-2 h-7 w-7 rounded-circular flex items-center justify-center border-2 z-10 transition-all
+                    ${isCompleted ? "bg-success border-success text-text-on-primary shadow-small" : ""}
+                    ${isActive ? "bg-white border-primary text-primary scale-110 shadow-card animate-pulse" : ""}
+                    ${isUpcoming ? "bg-white border-gray-200 text-text-muted" : ""}
+                  `}>
+                    {isCompleted && <CheckCircle2 size={13} />}
+                    {isActive && <Navigation size={12} />}
+                    {isUpcoming && <Clock size={12} />}
+                  </div>
+
+                  {/* Card Container */}
+                  <div className={`bg-surface-app border p-5 rounded-m shadow-card flex flex-col md:flex-row md:items-center justify-between gap-5 hover:border-primary/10 transition-all
+                    ${isCompleted ? "border-success/15 hover:border-success/35 opacity-90" : ""}
+                    ${isActive ? "border-primary/35 shadow-card" : ""}
+                    ${isUpcoming ? "border-border-app opacity-60" : ""}
+                  `}>
+                    <div className="flex flex-col md:flex-row gap-5 items-start md:items-center">
+                      
+                      {/* Time block */}
+                      <div className="space-y-0.5 shrink-0">
+                        <span className="text-[9px] font-bold text-text-secondary uppercase">Scheduled Block</span>
+                        <span className="block text-xs font-bold text-text-primary">{trip.scheduledTime}</span>
+                        <span className="text-[10px] text-text-secondary block">Duration: {trip.duration}</span>
+                      </div>
+
+                      {/* Path specification */}
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-1.5">
+                          <span className="font-mono font-bold text-[9px] text-primary bg-primary-light px-1.5 py-0.2 rounded">
+                            {trip.id}
+                          </span>
+                          <span className={`inline-block px-1.5 py-0.2 text-[8px] font-bold rounded uppercase tracking-wider border
+                            ${trip.priority === "High" ? "bg-error-light text-error border-error/20" : ""}
+                            ${trip.priority === "Medium" ? "bg-primary-light text-primary border-primary/20" : ""}
+                            ${trip.priority === "Low" ? "bg-gray-100 text-text-secondary border-gray-200" : ""}
+                          `}>
+                            {trip.priority} Priority
+                          </span>
+                          
+                          {/* Status Badge */}
+                          <span className={`inline-block px-1.5 py-0.2 text-[8px] font-bold rounded uppercase tracking-wider border
+                            ${trip.status === "Completed" ? "bg-success-light text-success border-success/20" : ""}
+                            ${trip.status === "In Progress" ? "bg-primary-light text-primary border-primary/20" : ""}
+                            ${trip.status === "Upcoming" ? "bg-gray-100 text-text-secondary border-gray-200" : ""}
+                          `}>
+                            {trip.status}
+                          </span>
+                        </div>
+                        
+                        {/* Pickup/Destination Text */}
+                        <span className="text-xs text-text-primary block font-semibold mt-1">
+                          {trip.pickup} ➔ {trip.destination}
+                        </span>
+                      </div>
+
+                    </div>
+
+                    {/* Actions Block */}
+                    <div className="flex items-center gap-2 shrink-0">
+                      <button
+                        onClick={() => triggerToast(`Opening manifest and cargo weight logs for ${trip.id}.`)}
+                        className="flex h-8 items-center justify-center px-3 border border-border-app bg-surface-app hover:bg-gray-50 text-[11px] font-bold text-text-secondary hover:text-text-primary rounded transition-all cursor-pointer"
+                      >
+                        View Details
+                      </button>
+
+                      {isActive && (
+                        <button
+                          onClick={() => triggerToast(`GPS route navigation mapping loaded for ${trip.id}.`)}
+                          className="flex h-8 items-center gap-1 px-3 bg-primary hover:bg-primary/95 text-[11px] font-bold text-text-on-primary rounded transition-all shadow-small cursor-pointer"
+                        >
+                          <Navigation size={12} />
+                          <span>Navigate</span>
+                        </button>
+                      )}
+
+                      {isUpcoming && (
+                        <button
+                          onClick={() => triggerToast(`Initiating trip ${trip.id}. Dispatch operations center notified.`)}
+                          className="flex h-8 items-center gap-1 px-3 bg-success hover:bg-success/95 text-[11px] font-bold text-text-on-primary rounded transition-all shadow-small cursor-pointer"
+                        >
+                          <Play size={12} />
+                          <span>Start Trip</span>
+                        </button>
+                      )}
+                    </div>
+
+                  </div>
+                </div>
+              );
+            });
+          })()}
+        </div>
       </div>
 
     </div>
