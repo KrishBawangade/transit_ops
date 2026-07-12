@@ -1,26 +1,80 @@
 @import "tailwindcss";
 
+@theme {
+  /* Brand Colors */
+  --color-primary: #2563EB;
+  --color-primary-light: #EFF6FF;
+  
+  --color-secondary: #0F766E;
+  --color-secondary-light: #F0FDFA;
+
+  /* Status Colors */
+  --color-success: #16A34A;
+  --color-success-light: #DCFCE7;
+
+  --color-warning: #F59E0B;
+  --color-warning-light: #FEF3C7;
+
+  --color-error: #DC2626;
+  --color-error-light: #FEE2E2;
+
+  --color-info: #0284C7;
+  --color-info-light: #E0F2FE;
+
+  /* Neutral Colors */
+  --color-background-app: #F8FAFC;
+  --color-surface-app: #FFFFFF;
+  --color-border-app: #E5E7EB;
+  --color-divider-app: #CBD5E1;
+
+  /* Text Colors */
+  --color-text-primary: #111827;
+  --color-text-secondary: #6B7280;
+  --color-text-muted: #9CA3AF;
+  --color-text-on-primary: #FFFFFF;
+
+  /* Grays */
+  --color-gray-50: #F9FAFB;
+  --color-gray-100: #F3F4F6;
+  --color-gray-300: #D1D5DB;
+  --color-gray-800: #1F2937;
+  --color-gray-900: #111827;
+
+  /* 8-Point Spacing Grid (extends standard tailwind classes) */
+  --spacing-4: 4px;
+  --spacing-8: 8px;
+  --spacing-12: 12px;
+  --spacing-16: 16px;
+  --spacing-20: 20px;
+  --spacing-24: 24px;
+  --spacing-32: 32px;
+  --spacing-40: 40px;
+  --spacing-48: 48px;
+  --spacing-64: 64px;
+
+  /* Border Radiuses */
+  --radius-s: 8px;
+  --radius-m: 12px;
+  --radius-l: 16px;
+  --radius-xl: 20px;
+  --radius-circular: 9999px;
+
+  /* Soft Dashboard Shadows */
+  --shadow-small: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  --shadow-card: 0 1px 3px 0 rgba(15, 23, 42, 0.02), 0 4px 6px -1px rgba(15, 23, 42, 0.06);
+  --shadow-menu: 0 4px 6px -2px rgba(0, 0, 0, 0.04), 0 10px 15px -3px rgba(0, 0, 0, 0.08);
+  --shadow-dialog: 0 10px 15px -3px rgba(0, 0, 0, 0.06), 0 25px 50px -12px rgba(0, 0, 0, 0.12);
+  --shadow-sidebar: 1px 0 2px 0 rgba(15, 23, 42, 0.02), 4px 0 10px -2px rgba(15, 23, 42, 0.06);
+  --shadow-focus: 0 0 0 2px rgba(37, 99, 235, 0.24);
+}
+
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  --background: #F8FAFC;
+  --foreground: #111827;
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: 'Inter', system-ui, sans-serif;
 }
