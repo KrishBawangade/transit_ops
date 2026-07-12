@@ -37,3 +37,17 @@ export interface SafetyViolation {
   status: "Resolved" | "Pending Action";
   remarks: string;
 }
+
+export type RiskLevel = "Low" | "Medium" | "High";
+
+export interface SafetyScoreRecord {
+  id: string;
+  name: string;
+  employeeId: string;
+  safetyScore: number;
+  harshBrakingEvents: number;
+  overspeedingEvents: number;
+  accidentCount: number;
+  lastUpdated: string; // YYYY-MM-DD
+  riskLevel: RiskLevel;
+}
