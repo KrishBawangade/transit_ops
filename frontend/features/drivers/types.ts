@@ -12,4 +12,28 @@ export interface DriverCompliance {
   medicalExpiry: string; // YYYY-MM-DD
   status: ComplianceStatus;
   notes?: string;
+  phoneNumber?: string;
+  email?: string;
+  department?: string;
+  issuingAuthority?: string;
+  medicalCertificateNumber?: string;
+  medicalStatus?: string;
+  medicalHospital?: string;
+}
+
+export interface ComplianceHistoryRecord {
+  id: string;
+  checkDate: string; // YYYY-MM-DD
+  checkedBy: string;
+  status: ComplianceStatus;
+  remarks: string;
+}
+
+export interface SafetyViolation {
+  id: string;
+  date: string; // YYYY-MM-DD
+  type: string;
+  severity: "Low" | "Medium" | "High";
+  status: "Resolved" | "Pending Action";
+  remarks: string;
 }

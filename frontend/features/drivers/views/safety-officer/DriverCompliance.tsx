@@ -1,13 +1,15 @@
 "use client";
 
-import React, { useState, useMemo } from "react";
-import { Users, FileDown, ShieldCheck, AlertTriangle, ShieldAlert, X } from "lucide-react";
+import React, { useMemo } from "react";
+import { useRouter } from "next/navigation";
+import { Users, FileDown, ShieldCheck, AlertTriangle, ShieldAlert } from "lucide-react";
 import { useDriverCompliance } from "../../hooks/useDriverCompliance";
 import { DriverComplianceTable } from "../../components/DriverComplianceTable";
 import { DriverComplianceFilters } from "../../components/DriverComplianceFilters";
 import { DriverCompliance as DriverComplianceType } from "../../types";
 
 export function DriverCompliance() {
+  const router = useRouter();
   const {
     records,
     totalItems,
@@ -27,7 +29,9 @@ export function DriverCompliance() {
     handleSort
   } = useDriverCompliance();
 
-  const [viewTarget, setViewTarget] = useState<DriverComplianceType | null>(null);
+  const handleViewClick = (record: DriverComplianceType) => {
+    router.push(`/drivers/${record.id}/compliance`);
+  };
 
   // Compute metric summaries from active state
   const metrics = useMemo(() => {
@@ -153,89 +157,8 @@ export function DriverCompliance() {
             sortBy={sortBy}
             sortOrder={sortOrder}
             onSort={handleSort}
-            onViewClick={setViewTarget}
+            onViewClick={handleViewClick}
           />
-        </div>
-      )}
-
-      {/* Read-Only View Details Modal */}
-      {viewTarget && (
-        <div role="dialog" aria-modal="true" className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div className="fixed inset-0 bg-black/40 backdrop-blur-sm animate-fadeIn" onClick={() => setViewTarget(null)} />
-          <div className="bg-surface-app border border-border-app rounded-m shadow-dialog max-w-md w-full p-6 relative z-10 animate-fadeIn space-y-4">
-            <div className="flex justify-between items-start">
-              <div>
-                <h3 className="text-base font-bold text-text-primary">Driver Compliance Log Details</h3>
-                <p className="text-xs text-text-secondary mt-1">
-                  Active safety audit parameters and validity counters.
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={() => setViewTarget(null)}
-                className="text-text-muted hover:text-text-primary rounded focus:outline-none focus:ring-2 focus:ring-primary/20 cursor-pointer"
-              >
-                <X size={18} />
-              </button>
-            </div>
-
-            <dl className="grid grid-cols-2 gap-4 text-xs leading-normal border-t border-divider-app pt-4">
-              <div>
-                <dt className="text-text-secondary">Driver Name</dt>
-                <dd className="text-text-primary font-semibold mt-0.5">{viewTarget.name}</dd>
-              </div>
-              <div>
-                <dt className="text-text-secondary">Employee ID</dt>
-                <dd className="text-text-primary font-bold font-mono mt-0.5">{viewTarget.employeeId}</dd>
-              </div>
-              <div>
-                <dt className="text-text-secondary">License Number</dt>
-                <dd className="text-text-primary font-bold font-mono mt-0.5">{viewTarget.licenseNumber}</dd>
-              </div>
-              <div>
-                <dt className="text-text-secondary">License Type</dt>
-                <dd className="text-text-primary font-semibold mt-0.5">{viewTarget.licenseType}</dd>
-              </div>
-              <div>
-                <dt className="text-text-secondary">License Expiry</dt>
-                <dd className="text-text-primary font-mono mt-0.5">{viewTarget.licenseExpiry}</dd>
-              </div>
-              <div>
-                <dt className="text-text-secondary">Medical Expiry</dt>
-                <dd className="text-text-primary font-mono mt-0.5">{viewTarget.medicalExpiry}</dd>
-              </div>
-              <div>
-                <dt className="text-text-secondary">Compliance Status</dt>
-                <dd className="text-text-primary mt-0.5">
-                  <span className={`inline-flex px-2 py-0.5 text-[10px] font-bold rounded-circular border uppercase tracking-wider select-none ${
-                    viewTarget.status === "Compliant"
-                      ? "bg-success-light text-success border-success/20"
-                      : viewTarget.status === "Expiring Soon"
-                      ? "bg-warning-light text-warning border-warning/20"
-                      : "bg-error-light text-error border-error/20"
-                  }`}>
-                    {viewTarget.status}
-                  </span>
-                </dd>
-              </div>
-            </dl>
-
-            <div className="border-t border-divider-app pt-4 space-y-1.5">
-              <span className="block text-xs font-semibold text-text-secondary">Safety Auditor Notes</span>
-              <div className="text-xs text-text-primary bg-gray-50 p-3 rounded-m border border-border-app min-h-[70px] whitespace-pre-wrap font-sans leading-relaxed">
-                {viewTarget.notes || "No notes registered."}
-              </div>
-            </div>
-
-            <div className="flex justify-end border-t border-divider-app pt-4 select-none">
-              <button
-                onClick={() => setViewTarget(null)}
-                className="px-4.5 h-9 bg-primary text-text-on-primary text-xs font-semibold rounded-m hover:bg-primary/95 focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all shadow-small cursor-pointer"
-              >
-                Close
-              </button>
-            </div>
-          </div>
         </div>
       )}
     </div>
