@@ -52,51 +52,50 @@ async function main() {
     },
   });
 
-  const driverUser1 = await prisma.user.create({
-    data: {
-      email: "john.doe@transitops.com",
-      passwordHash: dummyPasswordHash,
-      firstName: "John",
-      lastName: "Doe",
-      role: Role.DRIVER,
-      phone: "+15550100204",
-    },
-  });
+  const driverData = [
+    { email: "alex.rivera@transitops.com", firstName: "Alex", lastName: "Rivera", phone: "+15550192834", licenseNumber: "DL9382098", licenseClass: "Class A CDL", licenseExpiry: new Date("2028-11-15"), status: DriverStatus.ACTIVE, rating: 4.90 },
+    { email: "sarah.connor@transitops.com", firstName: "Sarah", lastName: "Connor", phone: "+15550187263", licenseNumber: "DL8273928", licenseClass: "Class A CDL", licenseExpiry: new Date("2029-04-20"), status: DriverStatus.ACTIVE, rating: 4.80 },
+    { email: "david.chen@transitops.com", firstName: "David", lastName: "Chen", phone: "+15550169023", licenseNumber: "DL1920392", licenseClass: "Class B CDL", licenseExpiry: new Date("2027-08-10"), status: DriverStatus.ACTIVE, rating: 4.75 },
+    { email: "emma.watson@transitops.com", firstName: "Emma", lastName: "Watson", phone: "+15550123849", licenseNumber: "DL3849201", licenseClass: "Class A CDL", licenseExpiry: new Date("2026-12-05"), status: DriverStatus.ACTIVE, rating: 4.95 },
+    { email: "marcus.aurelius@transitops.com", firstName: "Marcus", lastName: "Aurelius", phone: "+15550149273", licenseNumber: "DL8821039", licenseClass: "Class A CDL", licenseExpiry: new Date("2030-01-30"), status: DriverStatus.INACTIVE, rating: 4.50 },
+    { email: "elena.rostova@transitops.com", firstName: "Elena", lastName: "Rostova", phone: "+15550118273", licenseNumber: "DL7729103", licenseClass: "Class B CDL", licenseExpiry: new Date("2028-06-18"), status: DriverStatus.ACTIVE, rating: 4.85 },
+    { email: "carlos.santana@transitops.com", firstName: "Carlos", lastName: "Santana", phone: "+15550157721", licenseNumber: "DL2938102", licenseClass: "Class A CDL", licenseExpiry: new Date("2029-09-14"), status: DriverStatus.SUSPENDED, rating: 3.90 },
+    { email: "john.doe@transitops.com", firstName: "John", lastName: "Doe", phone: "+15550198832", licenseNumber: "DL3849209", licenseClass: "Class A CDL", licenseExpiry: new Date("2027-03-22"), status: DriverStatus.ACTIVE, rating: 4.65 }
+  ];
 
-  const driverUser2 = await prisma.user.create({
-    data: {
-      email: "jane.smith@transitops.com",
-      passwordHash: dummyPasswordHash,
-      firstName: "Jane",
-      lastName: "Smith",
-      role: Role.DRIVER,
-      phone: "+15550100205",
-    },
-  });
+  const dbDrivers: any[] = [];
+  const dbDriverUsers: any[] = [];
+  for (const d of driverData) {
+    const user = await prisma.user.create({
+      data: {
+        email: d.email,
+        passwordHash: dummyPasswordHash,
+        firstName: d.firstName,
+        lastName: d.lastName,
+        role: Role.DRIVER,
+        phone: d.phone,
+      }
+    });
 
-  // 2. Create Driver Profiles
-  console.log("🪪 Creating driver profiles...");
-  const driver1 = await prisma.driver.create({
-    data: {
-      userId: driverUser1.id,
-      licenseNumber: "DL12345678",
-      licenseClass: "Class A CDL",
-      licenseExpiry: new Date("2027-12-31"),
-      status: DriverStatus.ACTIVE,
-      rating: 4.85,
-    },
-  });
+    const driver = await prisma.driver.create({
+      data: {
+        userId: user.id,
+        licenseNumber: d.licenseNumber,
+        licenseClass: d.licenseClass,
+        licenseExpiry: d.licenseExpiry,
+        status: d.status,
+        rating: d.rating,
+      }
+    });
 
-  const driver2 = await prisma.driver.create({
-    data: {
-      userId: driverUser2.id,
-      licenseNumber: "DL87654321",
-      licenseClass: "Class B CDL",
-      licenseExpiry: new Date("2028-06-15"),
-      status: DriverStatus.ON_TRIP,
-      rating: 4.92,
-    },
-  });
+    dbDrivers.push(driver);
+    dbDriverUsers.push(user);
+  }
+
+  const driver1 = dbDrivers[7]; // John Doe
+  const driverUser1 = dbDriverUsers[7];
+  const driver2 = dbDrivers[1]; // Sarah Connor
+  const driverUser2 = dbDriverUsers[1];
 
   // 3. Create Vehicles
   console.log("🚚 Creating vehicle fleet...");

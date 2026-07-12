@@ -1,13 +1,14 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Users, Plus, Filter, Search, Star, Trash2, Edit3, ShieldAlert, CheckCircle2, X } from "lucide-react";
+import { Users, Plus, Filter, Search, Star, Trash2, Edit3, ShieldAlert, CheckCircle2, X, RefreshCw } from "lucide-react";
 import { DriverCompliance } from "@/features/drivers/views/safety-officer/DriverCompliance";
 import { driverService } from "@/features/drivers/services/driver.service";
 
 export default function DriversPage() {
   const [role, setRole] = useState("fleet-manager");
   const [drivers, setDrivers] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedStatus, setSelectedStatus] = useState<string>("ALL");
   const [toastMessage, setToastMessage] = useState<string | null>(null);
@@ -31,6 +32,7 @@ export default function DriversPage() {
   // Fetch or set initial mock data
   useEffect(() => {
     const loadDrivers = async () => {
+      setIsLoading(true);
       try {
         const response = await driverService.listDrivers();
         if (response && response.data && response.data.length > 0) {
@@ -40,6 +42,8 @@ export default function DriversPage() {
         }
       } catch (err) {
         setDrivers(mockDrivers);
+      } finally {
+        setIsLoading(false);
       }
     };
     loadDrivers();
@@ -56,7 +60,9 @@ export default function DriversPage() {
 
   // Filtered List
   const filteredDrivers = drivers.filter(driver => {
-    const name = driver.user?.name || "";
+    const name = driver.user 
+      ? (driver.user.name || `${driver.user.firstName} ${driver.user.lastName}`) 
+      : "";
     const email = driver.user?.email || "";
     const license = driver.licenseNumber || "";
     const status = driver.status || "";
@@ -135,7 +141,12 @@ export default function DriversPage() {
 
       {/* Drivers Roster List */}
       <div className="bg-surface-app border border-border-app rounded-m overflow-hidden shadow-card">
-        {filteredDrivers.length === 0 ? (
+        {isLoading ? (
+          <div className="p-12 text-center space-y-3 select-none">
+            <RefreshCw size={24} className="text-primary animate-spin mx-auto animate-pulse" />
+            <p className="text-xs text-text-secondary font-semibold">Loading Commercial Drivers Roster...</p>
+          </div>
+        ) : filteredDrivers.length === 0 ? (
           <div className="p-12 text-center space-y-3">
             <Users size={32} className="text-text-secondary mx-auto" />
             <h3 className="text-sm font-bold text-text-primary">No drivers found</h3>
@@ -159,7 +170,7 @@ export default function DriversPage() {
                 {filteredDrivers.map((driver) => {
                   const name = driver.user?.name || "Unassigned User";
                   const email = driver.user?.email || "No email info";
-                  const rating = driver.rating || 5.0;
+                  const rating = Number(driver.rating ?? 5.0);
 
                   return (
                     <tr key={driver.id} className="hover:bg-gray-50/50 transition-colors">
