@@ -45,6 +45,7 @@ export function Sidebar({ isOpen, setIsOpen, isMobile = false }: SidebarProps) {
   const navItems = role === "safety-officer" ? [
     { href: "/", label: "Dashboard", icon: LayoutDashboard },
     { href: "/drivers/compliance", label: "Compliance", icon: ClipboardList },
+    { href: "/drivers/licenses", label: "Licenses", icon: CreditCard },
     { href: "/drivers/safety-scores", label: "Safety Scores", icon: TrendingUp },
     { href: "/settings", label: "Settings", icon: Settings },
   ] : role === "driver" ? [

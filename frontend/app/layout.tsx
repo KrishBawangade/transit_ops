@@ -1,12 +1,11 @@
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
 import { AuthProvider } from "@/lib/providers/auth-provider";
 import "./globals.css";
 
-const inter = Inter({
-  variable: "--font-sans",
-  subsets: ["latin"],
-});
+// Mock font variable to avoid build-time network requests in offline environments
+const inter = {
+  variable: "font-sans",
+};
 
 export const metadata: Metadata = {
   title: "TransitOps | Fleet & Transport Operations Management",

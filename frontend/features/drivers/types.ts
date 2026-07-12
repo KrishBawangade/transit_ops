@@ -51,3 +51,18 @@ export interface SafetyScoreRecord {
   lastUpdated: string; // YYYY-MM-DD
   riskLevel: RiskLevel;
 }
+
+export type DocumentStatus = "Valid" | "Expiring Soon" | "Expired";
+
+export interface LicenseMonitoringRecord {
+  id: string;
+  name: string;
+  employeeId: string;
+  licenseNumber: string;
+  licenseExpiry: string; // YYYY-MM-DD
+  medicalExpiry: string; // YYYY-MM-DD
+  daysRemaining: number;
+  licenseStatus: DocumentStatus;
+  medicalStatus: DocumentStatus;
+  overallStatus: DocumentStatus;
+}
