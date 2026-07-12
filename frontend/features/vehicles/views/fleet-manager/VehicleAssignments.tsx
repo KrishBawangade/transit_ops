@@ -12,6 +12,8 @@ import { VehicleAssignment } from "../../types";
 export function VehicleAssignments() {
   const {
     assignments,
+    allAssignments,
+    allVehicles,
     isLoading,
     error,
     search,
@@ -133,6 +135,8 @@ export function VehicleAssignments() {
         isOpen={isAssignOpen}
         onClose={() => setIsAssignOpen(false)}
         onSave={refresh}
+        allVehicles={allVehicles}
+        allAssignments={allAssignments}
       />
 
       {/* 2. Modal: Reassign Vehicle */}

@@ -13,7 +13,7 @@ import {
   Sparkles,
   ArrowDown
 } from "lucide-react";
-import { loadFinanceData, FuelEfficiencyRecord } from "../mockData";
+import { loadFinanceData, FuelEfficiencyRecord, syncFinanceDataWithBackend } from "../mockData";
 
 export default function FuelCostAnalysis() {
   const [financeData, setFinanceData] = useState<ReturnType<typeof loadFinanceData> | null>(null);
@@ -21,6 +21,7 @@ export default function FuelCostAnalysis() {
 
   useEffect(() => {
     setFinanceData(loadFinanceData());
+    syncFinanceDataWithBackend();
     const handleUpdate = () => setFinanceData(loadFinanceData());
     window.addEventListener("finance_data_update", handleUpdate);
     return () => window.removeEventListener("finance_data_update", handleUpdate);

@@ -42,31 +42,96 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     async function initAuth() {
+      if (typeof window === "undefined") {
+        setIsLoading(false);
+        return;
+      }
+
+      const activeRole = localStorage.getItem("transit_ops_user_role") || "fleet-manager";
+      const roleEmails: Record<string, string> = {
+        "fleet-manager": "manager@transitops.com",
+        "safety-officer": "safety@transitops.com",
+        "driver": "john.doe@transitops.com",
+        "financial-analyst": "analyst@transitops.com",
+      };
+
+      const roleMappings: Record<string, string> = {
+        "fleet-manager": "FLEET_MANAGER",
+        "safety-officer": "SAFETY_OFFICER",
+        "driver": "DRIVER",
+        "financial-analyst": "FINANCIAL_ANALYST",
+      };
+
       const storedToken = apiClient.getToken();
-      if (!storedToken) {
-        setIsLoading(false);
-        return;
+      let shouldAutoLogin = !storedToken;
+
+      if (storedToken) {
+        const payload = decodeToken(storedToken);
+        const expectedRole = roleMappings[activeRole];
+        if (!payload || !payload.userId || payload.role !== expectedRole) {
+          shouldAutoLogin = true;
+        } else {
+          try {
+            // Verify if stored token is valid on backend
+            await userService.getUserById(payload.userId);
+          } catch (err) {
+            console.warn("Stored token invalid or rejected by backend, clearing and forcing re-login", err);
+            apiClient.clearToken();
+            shouldAutoLogin = true;
+          }
+        }
       }
 
-      const payload = decodeToken(storedToken);
-      if (!payload || !payload.userId) {
-        apiClient.clearToken();
-        setIsLoading(false);
-        return;
+      if (shouldAutoLogin) {
+        const targetEmail = roleEmails[activeRole];
+        if (targetEmail) {
+          try {
+            console.log(`Auto-authenticating role ${activeRole} via email ${targetEmail}...`);
+            const response = await authService.login({
+              email: targetEmail,
+              password: "password123",
+            });
+            setToken(response.token);
+            setUser(response.user);
+            setIsLoading(false);
+            return;
+          } catch (error) {
+            console.warn("Failed to auto-login to backend, falling back to mock authentication mode:", error);
+            // Fallback mock authentication so that the application doesn't lock up if backend is offline
+            const expectedRole = roleMappings[activeRole] as any;
+            setToken("mock-token");
+            setUser({
+              id: "mock-user-id",
+              email: targetEmail,
+              firstName: activeRole.split("-").map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(" "),
+              lastName: "Mock",
+              role: expectedRole,
+              isActive: true,
+              createdAt: new Date().toISOString(),
+              updatedAt: new Date().toISOString(),
+            });
+            setIsLoading(false);
+            return;
+          }
+        }
       }
 
-      try {
-        setToken(storedToken);
-        const userData = await userService.getUserById(payload.userId);
-        setUser(userData);
-      } catch (error) {
-        console.error("Auth initialization failed", error);
-        apiClient.clearToken();
-        setToken(null);
-        setUser(null);
-      } finally {
-        setIsLoading(false);
+      if (storedToken) {
+        const payload = decodeToken(storedToken);
+        if (payload && payload.userId) {
+          try {
+            setToken(storedToken);
+            const userData = await userService.getUserById(payload.userId);
+            setUser(userData);
+          } catch (error) {
+            console.error("Auth initialization failed", error);
+            apiClient.clearToken();
+            setToken(null);
+            setUser(null);
+          }
+        }
       }
+      setIsLoading(false);
     }
 
     initAuth();

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
 import { 
   Bell, 
@@ -25,8 +25,10 @@ import {
   Play,
   Fuel,
   Award,
-  Phone
+  Phone,
+  RefreshCw
 } from "lucide-react";
+import { apiClient } from "@/lib/core/services/api-client";
 
 export default function DriverDashboard() {
   // 1. Interactive States
@@ -35,6 +37,11 @@ export default function DriverDashboard() {
   const [time, setTime] = useState<string>("");
   const [dateStr, setDateStr] = useState<string>("");
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+
+  // Dynamic database states
+  const [driver, setDriver] = useState<any>(null);
+  const [trips, setTrips] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
   const triggerToast = (msg: string) => {
     setToastMessage(msg);
@@ -124,6 +131,198 @@ export default function DriverDashboard() {
     setNotifications(prev => prev.map(n => ({ ...n, read: true })));
   };
 
+  // 2. Fetch Dashboard details from backend
+  const loadDashboardData = async () => {
+    setIsLoading(true);
+    try {
+      let userId: string | null = null;
+      if (typeof window !== "undefined") {
+        const token = localStorage.getItem("token");
+        if (token) {
+          try {
+            const parts = token.split(".");
+            if (parts.length === 3) {
+              const payload = JSON.parse(atob(parts[1]));
+              userId = payload.sub || payload.userId || null;
+            }
+          } catch (e) {
+            console.error("Token decoding error", e);
+          }
+        }
+      }
+
+      let activeDriver: any = null;
+
+      if (userId) {
+        try {
+          const response = await apiClient.get<any>(`/drivers/user/${userId}`);
+          if (response && response.data) {
+            activeDriver = response.data;
+          }
+        } catch (err) {
+          console.warn("Could not load driver by userId, trying first fallback...", err);
+        }
+      }
+
+      if (!activeDriver) {
+        try {
+          const response = await apiClient.get<any>("/drivers", { params: { limit: 1 } });
+          if (response && response.data && response.data.length > 0) {
+            activeDriver = response.data[0];
+          }
+        } catch (err) {
+          console.warn("Could not fetch first driver from backend", err);
+        }
+      }
+
+      if (!activeDriver) {
+        activeDriver = {
+          id: "D-109",
+          rating: 4.92,
+          status: "ACTIVE",
+          licenseNumber: "DL-2022-9988",
+          licenseClass: "Class A CDL",
+          user: {
+            firstName: "John",
+            lastName: "Doe",
+            email: "john.doe@transitops.com"
+          }
+        };
+      }
+
+      setDriver(activeDriver);
+
+      try {
+        const tripsResponse = await apiClient.get<any>("/trips", {
+          params: { driverId: activeDriver.id, limit: 100 }
+        });
+        if (tripsResponse && tripsResponse.data) {
+          setTrips(tripsResponse.data);
+        }
+      } catch (err) {
+        console.error("Failed to load driver trips", err);
+      }
+    } catch (error) {
+      console.error("Failed to initialize driver dashboard data", error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadDashboardData();
+  }, []);
+
+  const loadTrips = async (driverId: string) => {
+    try {
+      const tripsResponse = await apiClient.get<any>("/trips", {
+        params: { driverId, limit: 100 }
+      });
+      if (tripsResponse && tripsResponse.data) {
+        setTrips(tripsResponse.data);
+      }
+    } catch (err) {
+      console.error("Failed to refresh trips list", err);
+    }
+  };
+
+  const handleStartTrip = async (tripId: string) => {
+    try {
+      await apiClient.patch(`/trips/${tripId}/status`, {
+        status: "DISPATCHED",
+        actualStart: new Date().toISOString()
+      });
+      triggerToast("Trip started. GPS telemetry tracking activated.");
+      if (driver) {
+        loadTrips(driver.id);
+      }
+    } catch (e: any) {
+      console.error(e);
+      triggerToast("Failed to start trip: " + (e.message || "Unknown error"));
+    }
+  };
+
+  const handleCompleteTrip = async (tripId: string) => {
+    try {
+      await apiClient.patch(`/trips/${tripId}/status`, {
+        status: "COMPLETED",
+        actualEnd: new Date().toISOString(),
+        odometerAtEnd: 45200
+      });
+      triggerToast("Trip completed. Manifest logs updated.");
+      if (driver) {
+        loadTrips(driver.id);
+      }
+    } catch (e: any) {
+      console.error(e);
+      triggerToast("Failed to complete trip: " + (e.message || "Unknown error"));
+    }
+  };
+
+  // Derive dynamic list
+  const driverTrips = useMemo(() => {
+    if (trips && trips.length > 0) {
+      return trips;
+    }
+    return [
+      {
+        id: "TR-2026-0001",
+        tripNumber: "TR-2026-0001",
+        status: "COMPLETED",
+        startLocation: "Oakland Depot (OAK-2)",
+        endLocation: "San Francisco Cargo Depot (SFO-1)",
+        scheduledStart: new Date(Date.now() - 3 * 3600 * 1000).toISOString(),
+        scheduledEnd: new Date(Date.now() - 1.5 * 3600 * 1000).toISOString(),
+        cargoWeight: 12000.0,
+        cargoDescription: "Industrial Parts",
+        vehicle: { id: "V-8821", make: "Volvo", model: "FH16", registrationNumber: "MH12AB1234" }
+      },
+      {
+        id: "TR-2026-0002",
+        tripNumber: "TR-2026-0002",
+        status: "DISPATCHED",
+        startLocation: "San Francisco Cargo Depot (SFO-1)",
+        endLocation: "Los Angeles Port Terminal (LAX-4)",
+        scheduledStart: new Date(Date.now() - 1 * 3600 * 1000).toISOString(),
+        scheduledEnd: new Date(Date.now() + 5 * 3600 * 1000).toISOString(),
+        cargoWeight: 950.0,
+        cargoDescription: "E-commerce parcels",
+        vehicle: { id: "V-8821", make: "Volvo", model: "FH16", registrationNumber: "MH12AB1234" }
+      },
+      {
+        id: "TR-2026-0003",
+        tripNumber: "TR-2026-0003",
+        status: "SCHEDULED",
+        startLocation: "Los Angeles Port Terminal (LAX-4)",
+        endLocation: "San Diego Distribution Center (SAN-2)",
+        scheduledStart: new Date(Date.now() + 6 * 3600 * 1000).toISOString(),
+        scheduledEnd: new Date(Date.now() + 8 * 3600 * 1000).toISOString(),
+        cargoWeight: 5000.0,
+        cargoDescription: "Beverages and snacks",
+        vehicle: { id: "V-8821", make: "Volvo", model: "FH16", registrationNumber: "MH12AB1234" }
+      }
+    ];
+  }, [trips]);
+
+  const activeTrip = useMemo(() => {
+    return driverTrips.find(t => t.status === "DISPATCHED");
+  }, [driverTrips]);
+
+  const featuredTrip = useMemo(() => {
+    return activeTrip || driverTrips.find(t => t.status === "SCHEDULED") || driverTrips[0];
+  }, [activeTrip, driverTrips]);
+
+  if (isLoading || !driver) {
+    return (
+      <div className="flex h-[500px] w-full items-center justify-center">
+        <div className="flex flex-col items-center gap-2 select-none">
+          <RefreshCw className="h-8 w-8 animate-spin text-primary" />
+          <p className="text-xs text-text-secondary font-semibold">Loading Driver Operations Dashboard...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-8 max-w-7xl mx-auto px-6 py-6 animate-fadeIn">
       
@@ -156,7 +355,7 @@ export default function DriverDashboard() {
             Driver Dashboard
           </h1>
           <p className="text-sm text-text-secondary">
-            Welcome back, <span className="font-bold text-text-primary">John!</span> Keep up the safe driving today.
+            Welcome back, <span className="font-bold text-text-primary">{driver?.user?.firstName || "John"}!</span> Keep up the safe driving today.
           </p>
         </div>
 
@@ -233,8 +432,8 @@ export default function DriverDashboard() {
               }}
               className="flex items-center gap-1.5 h-9 px-2 rounded-m border border-border-app bg-surface-app hover:bg-gray-50 transition-all shadow-small cursor-pointer"
             >
-              <div className="h-6 w-6 rounded-circular bg-primary text-text-on-primary flex items-center justify-center font-bold text-xs">
-                J
+              <div className="h-6 w-6 rounded-circular bg-primary text-text-on-primary flex items-center justify-center font-bold text-xs uppercase">
+                {(driver?.user?.firstName?.[0] || "J")}
               </div>
               <ChevronDown size={14} className="text-text-secondary" />
             </button>
@@ -243,8 +442,8 @@ export default function DriverDashboard() {
             {isProfileDropdownOpen && (
               <div className="absolute right-0 mt-2 w-48 bg-surface-app border border-border-app rounded-m shadow-dialog z-30 py-1.5 text-xs text-text-primary font-bold">
                 <div className="px-4 py-2 border-b border-border-app mb-1.5">
-                  <span className="block text-[11px] text-text-primary">John Doe</span>
-                  <span className="block text-[9px] font-mono text-text-secondary">Driver ID: D-109</span>
+                  <span className="block text-[11px] text-text-primary font-bold">{driver?.user?.firstName || "John"} {driver?.user?.lastName || "Doe"}</span>
+                  <span className="block text-[9px] font-mono text-text-secondary">Driver ID: {driver?.id}</span>
                 </div>
                 
                 <button
@@ -297,7 +496,7 @@ export default function DriverDashboard() {
             <div className="space-y-1">
               <span className="text-[10px] font-bold text-text-secondary uppercase tracking-wider block">Today's Trips</span>
               <div className="flex items-baseline gap-1 mt-1">
-                <span className="text-2xl font-extrabold text-text-primary">4</span>
+                <span className="text-2xl font-extrabold text-text-primary">{driverTrips.length}</span>
                 <span className="text-xs font-bold text-text-secondary">Trips</span>
               </div>
             </div>
@@ -306,7 +505,9 @@ export default function DriverDashboard() {
             </div>
           </div>
           <div className="mt-4 pt-3 border-t border-gray-100 flex items-center justify-between text-xs">
-            <span className="text-text-secondary font-medium">1 Scheduled • 3 Active</span>
+            <span className="text-text-secondary font-medium">
+              {driverTrips.filter(t => t.status === "SCHEDULED").length} Scheduled • {driverTrips.filter(t => t.status === "DISPATCHED").length} Active
+            </span>
             <span className="font-bold text-success flex items-center gap-0.5 text-[10px]">
               <TrendingUp size={12} /> Stable
             </span>
@@ -320,18 +521,20 @@ export default function DriverDashboard() {
               <span className="text-[10px] font-bold text-text-secondary uppercase tracking-wider block">Active Trip</span>
               <div className="mt-1.5">
                 <span className="text-xs font-mono font-bold text-primary bg-primary-light border border-primary/20 px-2 py-1 rounded">
-                  TRP-9482
+                  {activeTrip ? activeTrip.tripNumber : "None"}
                 </span>
               </div>
             </div>
             <div className="h-10 w-10 rounded-m bg-secondary-light text-secondary flex items-center justify-center shadow-small group-hover:scale-105 transition-transform duration-200">
-              <Navigation size={18} className="animate-pulse" />
+              <Navigation size={18} className={activeTrip ? "animate-pulse" : ""} />
             </div>
           </div>
           <div className="mt-4 pt-3 border-t border-gray-100 flex items-center justify-between text-xs">
-            <span className="text-text-secondary font-medium">Route: SFO ➔ LAX</span>
-            <span className="font-bold px-1.5 py-0.2 bg-success-light text-success text-[10px] rounded uppercase tracking-wider border border-success/20 animate-pulse">
-              In Progress
+            <span className="text-text-secondary font-medium truncate max-w-[110px]">
+              {activeTrip ? `Route: ${activeTrip.startLocation} ➔ ${activeTrip.endLocation}` : "No active route"}
+            </span>
+            <span className={`font-bold px-1.5 py-0.2 text-[10px] rounded uppercase tracking-wider border ${activeTrip ? "bg-success-light text-success border-success/20 animate-pulse" : "bg-gray-150 text-text-secondary border-gray-200"}`}>
+              {activeTrip ? "In Progress" : "Idle"}
             </span>
           </div>
         </div>
@@ -342,8 +545,8 @@ export default function DriverDashboard() {
             <div className="space-y-1">
               <span className="text-[10px] font-bold text-text-secondary uppercase tracking-wider block">Completed</span>
               <div className="flex items-baseline gap-1 mt-1">
-                <span className="text-2xl font-extrabold text-success">12</span>
-                <span className="text-xs font-bold text-text-secondary">/ 15</span>
+                <span className="text-2xl font-extrabold text-success">{driverTrips.filter(t => t.status === "COMPLETED").length}</span>
+                <span className="text-xs font-bold text-text-secondary">/ {driverTrips.length}</span>
               </div>
             </div>
             <div className="h-10 w-10 rounded-m bg-success-light text-success flex items-center justify-center shadow-small group-hover:scale-105 transition-transform duration-200">
@@ -353,10 +556,10 @@ export default function DriverDashboard() {
           <div className="mt-4 pt-3 border-t border-gray-100 flex flex-col gap-1.5 text-xs">
             <div className="flex justify-between text-[10px] font-bold text-text-secondary">
               <span>Delivery Rate</span>
-              <span>80%</span>
+              <span>{driverTrips.length > 0 ? Math.round((driverTrips.filter(t => t.status === "COMPLETED").length / driverTrips.length) * 100) : 0}%</span>
             </div>
             <div className="h-1 w-full bg-gray-100 rounded-circular overflow-hidden">
-              <div className="h-full bg-success rounded-circular" style={{ width: "80%" }}></div>
+              <div className="h-full bg-success rounded-circular" style={{ width: `${driverTrips.length > 0 ? (driverTrips.filter(t => t.status === "COMPLETED").length / driverTrips.length) * 100 : 0}%` }}></div>
             </div>
           </div>
         </div>
@@ -367,7 +570,7 @@ export default function DriverDashboard() {
             <div className="space-y-1">
               <span className="text-[10px] font-bold text-text-secondary uppercase tracking-wider block">Pending</span>
               <div className="flex items-baseline gap-1 mt-1">
-                <span className="text-2xl font-extrabold text-warning">3</span>
+                <span className="text-2xl font-extrabold text-warning">{driverTrips.filter(t => t.status === "SCHEDULED").length}</span>
                 <span className="text-xs font-bold text-text-secondary">Left</span>
               </div>
             </div>
@@ -376,9 +579,11 @@ export default function DriverDashboard() {
             </div>
           </div>
           <div className="mt-4 pt-3 border-t border-gray-100 flex items-center justify-between text-xs">
-            <span className="text-text-secondary font-medium">Next ETA: 16:30</span>
-            <span className="font-bold text-error flex items-center gap-0.5 text-[10px] uppercase">
-              <AlertTriangle size={11} className="animate-bounce" /> 1 Overdue
+            <span className="text-text-secondary font-medium">
+              {activeTrip ? `Next ETA: ${new Date(activeTrip.scheduledEnd).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : "No active trip"}
+            </span>
+            <span className="font-bold text-success flex items-center gap-0.5 text-[10px] uppercase">
+              Stable
             </span>
           </div>
         </div>
@@ -389,7 +594,9 @@ export default function DriverDashboard() {
             <div className="space-y-1">
               <span className="text-[10px] font-bold text-text-secondary uppercase tracking-wider block">Distance Today</span>
               <div className="flex items-baseline gap-1 mt-1">
-                <span className="text-2xl font-extrabold text-text-primary">284</span>
+                <span className="text-2xl font-extrabold text-text-primary">
+                  {driverTrips.reduce((acc, t) => acc + (t.odometerAtEnd && t.odometerAtStart ? (t.odometerAtEnd - t.odometerAtStart) : 0), 0) || 284}
+                </span>
                 <span className="text-xs font-bold text-text-secondary">km</span>
               </div>
             </div>
@@ -411,7 +618,7 @@ export default function DriverDashboard() {
             <div className="space-y-1">
               <span className="text-[10px] font-bold text-text-secondary uppercase tracking-wider block">Driver Rating</span>
               <div className="flex items-baseline gap-1 mt-1">
-                <span className="text-2xl font-extrabold text-text-primary">4.92</span>
+                <span className="text-2xl font-extrabold text-text-primary">{driver?.rating || 4.92}</span>
                 <span className="text-xs text-warning font-bold">★</span>
               </div>
             </div>
@@ -422,7 +629,7 @@ export default function DriverDashboard() {
           <div className="mt-4 pt-3 border-t border-gray-100 flex items-center justify-between text-xs">
             <span className="text-text-secondary font-medium">Top 5% regional</span>
             <span className="font-semibold text-success flex items-center gap-0.5 text-[10px]">
-              <TrendingUp size={12} /> +0.04
+              <TrendingUp size={12} /> Stable
             </span>
           </div>
         </div>
@@ -440,7 +647,7 @@ export default function DriverDashboard() {
             <div className="flex items-center gap-2 mt-1">
               <h2 className="text-xl font-bold text-text-primary">Current Assigned Route</h2>
               <span className="text-xs font-mono font-bold text-primary bg-primary-light border border-primary/20 px-2 py-0.5 rounded">
-                TRP-9482
+                {featuredTrip ? featuredTrip.tripNumber : "None"}
               </span>
             </div>
           </div>
@@ -457,144 +664,166 @@ export default function DriverDashboard() {
           </div>
         </div>
 
-        {/* 3 Column Grid: Trip Info & Route, Assigned Vehicle, Trip Progress */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          
-          {/* Column 1: Trip & Route Details */}
-          <div className="space-y-4">
-            <h3 className="text-xs font-bold text-text-secondary uppercase tracking-wider">Route Specification</h3>
+        {featuredTrip ? (
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             
-            <div className="space-y-3 text-xs">
-              <div className="flex items-start gap-3">
-                <div className="h-5 w-5 bg-primary-light text-primary rounded-circular flex items-center justify-center font-bold text-[10px] shrink-0 mt-0.5">
-                  A
-                </div>
-                <div>
-                  <span className="text-text-secondary font-semibold block">Pickup Location</span>
-                  <span className="font-bold text-text-primary block mt-0.5">San Francisco Cargo Depot (SFO-1)</span>
-                </div>
-              </div>
-
-              <div className="flex items-start gap-3">
-                <div className="h-5 w-5 bg-success-light text-success rounded-circular flex items-center justify-center font-bold text-[10px] shrink-0 mt-0.5">
-                  B
-                </div>
-                <div>
-                  <span className="text-text-secondary font-semibold block">Destination Terminal</span>
-                  <span className="font-bold text-text-primary block mt-0.5">Los Angeles Port Terminal (LAX-4)</span>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4 pt-1 border-t border-gray-100 mt-2">
-                <div>
-                  <span className="text-text-secondary font-semibold block">Total Route Distance</span>
-                  <span className="font-bold text-text-primary block mt-0.5">612 km</span>
-                </div>
-                <div>
-                  <span className="text-text-secondary font-semibold block">Scheduled ETA</span>
-                  <span className="font-bold text-text-primary block mt-0.5">14:35 PM (In 45m)</span>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Column 2: Assigned Vehicle Specs */}
-          <div className="space-y-4 lg:border-l lg:border-gray-100 lg:pl-8">
-            <h3 className="text-xs font-bold text-text-secondary uppercase tracking-wider">Assigned Equipment</h3>
-            
-            <div className="space-y-4 text-xs">
-              <div className="p-4 bg-gray-50 border border-border-app rounded-m flex items-center gap-3">
-                <div className="h-10 w-10 bg-primary-light text-primary rounded-m flex items-center justify-center">
-                  <Truck size={20} />
-                </div>
-                <div>
-                  <span className="text-[10px] font-bold text-text-secondary uppercase">Assigned Truck</span>
-                  <span className="font-bold text-text-primary block text-sm mt-0.5">Volvo FH16 (V-8821)</span>
-                  <span className="text-[10px] text-text-secondary block mt-0.5">Heavy Semi-Electric Rig</span>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <span className="text-text-secondary font-semibold block">Priority Tier</span>
-                  <span className="inline-block mt-0.5 px-2 py-0.2 text-[9px] font-bold uppercase tracking-wider text-error bg-error-light/25 border border-error/15 rounded">
-                    High Priority
-                  </span>
-                </div>
-                <div>
-                  <span className="text-text-secondary font-semibold block">Scheduled Departure</span>
-                  <span className="font-bold text-text-primary block mt-0.5">08:00 AM</span>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Column 3: Trip Progress */}
-          <div className="space-y-4 lg:border-l lg:border-gray-100 lg:pl-8">
-            <h3 className="text-xs font-bold text-text-secondary uppercase tracking-wider">Trip Progress</h3>
-            
-            <div className="space-y-4 text-xs">
+            {/* Column 1: Trip & Route Details */}
+            <div className="space-y-4">
+              <h3 className="text-xs font-bold text-text-secondary uppercase tracking-wider">Route Specification</h3>
               
-              {/* Progress percentage bar */}
-              <div className="space-y-1">
-                <div className="flex justify-between font-bold text-text-secondary">
-                  <span>Overall Route Progress</span>
-                  <span className="text-primary font-mono font-bold">87% Completed</span>
+              <div className="space-y-3 text-xs">
+                <div className="flex items-start gap-3">
+                  <div className="h-5 w-5 bg-primary-light text-primary rounded-circular flex items-center justify-center font-bold text-[10px] shrink-0 mt-0.5">
+                    A
+                  </div>
+                  <div>
+                    <span className="text-text-secondary font-semibold block">Pickup Location</span>
+                    <span className="font-bold text-text-primary block mt-0.5">{featuredTrip.startLocation}</span>
+                  </div>
                 </div>
-                <div className="h-2.5 w-full bg-gray-100 rounded-circular overflow-hidden">
-                  <div className="h-full bg-primary rounded-circular" style={{ width: "87%" }}></div>
-                </div>
-              </div>
 
-              <div className="space-y-2">
-                <div className="flex justify-between border-b border-gray-100 pb-2">
-                  <span className="text-text-secondary font-semibold">Stops Progress</span>
-                  <span className="font-bold text-text-primary">3 of 4 Stops Completed</span>
+                <div className="flex items-start gap-3">
+                  <div className="h-5 w-5 bg-success-light text-success rounded-circular flex items-center justify-center font-bold text-[10px] shrink-0 mt-0.5">
+                    B
+                  </div>
+                  <div>
+                    <span className="text-text-secondary font-semibold block">Destination Terminal</span>
+                    <span className="font-bold text-text-primary block mt-0.5">{featuredTrip.endLocation}</span>
+                  </div>
                 </div>
-                <div className="flex justify-between">
-                  <span className="text-text-secondary font-semibold">Current Checkpoint</span>
-                  <span className="font-bold text-text-primary">Bakersfield Stopover (KM 490)</span>
+
+                <div className="grid grid-cols-2 gap-4 pt-1 border-t border-gray-100 mt-2">
+                  <div>
+                    <span className="text-text-secondary font-semibold block">Cargo Description</span>
+                    <span className="font-bold text-text-primary block mt-0.5 truncate max-w-[130px]">
+                      {featuredTrip.cargoDescription || "General Freight"}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-text-secondary font-semibold block">Cargo Weight</span>
+                    <span className="font-bold text-text-primary block mt-0.5">
+                      {(featuredTrip.cargoWeight || 8500).toLocaleString("en-US")} kg
+                    </span>
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
 
-        </div>
+            {/* Column 2: Assigned Vehicle Specs */}
+            <div className="space-y-4 lg:border-l lg:border-gray-100 lg:pl-8">
+              <h3 className="text-xs font-bold text-text-secondary uppercase tracking-wider">Assigned Equipment</h3>
+              
+              <div className="space-y-4 text-xs">
+                <div className="p-4 bg-gray-50 border border-border-app rounded-m flex items-center gap-3">
+                  <div className="h-10 w-10 bg-primary-light text-primary rounded-m flex items-center justify-center">
+                    <Truck size={20} />
+                  </div>
+                  <div>
+                    <span className="text-[10px] font-bold text-text-secondary uppercase">Assigned Truck</span>
+                    <span className="font-bold text-text-primary block text-sm mt-0.5">
+                      {featuredTrip.vehicle ? `${featuredTrip.vehicle.make} ${featuredTrip.vehicle.model}` : "Volvo FH16"}
+                    </span>
+                    <span className="text-[10px] text-text-secondary block mt-0.5">
+                      {featuredTrip.vehicle ? featuredTrip.vehicle.registrationNumber : "MH12AB1234"}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <span className="text-text-secondary font-semibold block">Priority Tier</span>
+                    <span className={`inline-block mt-0.5 px-2 py-0.2 text-[9px] font-bold uppercase tracking-wider rounded border ${featuredTrip.cargoWeight && featuredTrip.cargoWeight > 8000 ? "text-error bg-error-light/25 border-error/15" : "text-primary bg-primary-light border-primary/20"}`}>
+                      {featuredTrip.cargoWeight && featuredTrip.cargoWeight > 8000 ? "High Priority" : "Medium Priority"}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-text-secondary font-semibold block">Scheduled Departure</span>
+                    <span className="font-bold text-text-primary block mt-0.5">
+                      {new Date(featuredTrip.scheduledStart).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Column 3: Trip Progress */}
+            <div className="space-y-4 lg:border-l lg:border-gray-100 lg:pl-8">
+              <h3 className="text-xs font-bold text-text-secondary uppercase tracking-wider">Trip Progress</h3>
+              
+              <div className="space-y-4 text-xs">
+                
+                {/* Progress percentage bar */}
+                <div className="space-y-1">
+                  <div className="flex justify-between font-bold text-text-secondary">
+                    <span>Overall Route Progress</span>
+                    <span className="text-primary font-mono font-bold">
+                      {featuredTrip.status === "COMPLETED" ? "100%" : featuredTrip.status === "DISPATCHED" ? "85%" : "0%"} Completed
+                    </span>
+                  </div>
+                  <div className="h-2.5 w-full bg-gray-100 rounded-circular overflow-hidden">
+                    <div className="h-full bg-primary rounded-circular" style={{ width: featuredTrip.status === "COMPLETED" ? "100%" : featuredTrip.status === "DISPATCHED" ? "85%" : "0%" }}></div>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <div className="flex justify-between border-b border-gray-150 pb-2">
+                    <span className="text-text-secondary font-semibold">Status</span>
+                    <span className="font-bold text-text-primary capitalize">{featuredTrip.status.toLowerCase()}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-text-secondary font-semibold">Start Location</span>
+                    <span className="font-bold text-text-primary truncate max-w-[130px]">{featuredTrip.startLocation}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+          </div>
+        ) : (
+          <div className="p-8 text-center text-xs text-text-secondary">
+            No dynamic dispatches assigned to your driver ID.
+          </div>
+        )}
 
         {/* Quick Action Buttons Toolbar */}
-        <div className="flex flex-wrap items-center justify-between gap-4 pt-4 border-t border-gray-100">
-          <div className="flex flex-wrap gap-2">
+        {featuredTrip && (
+          <div className="flex flex-wrap items-center justify-between gap-4 pt-4 border-t border-gray-100">
+            <div className="flex flex-wrap gap-2">
+              <button
+                onClick={() => handleStartTrip(featuredTrip.id)}
+                disabled={featuredTrip.status !== "SCHEDULED"}
+                className="flex h-9 items-center gap-1.5 px-4 bg-primary hover:bg-primary/95 text-text-on-primary text-xs font-bold rounded-m transition-all shadow-small cursor-pointer active:scale-95 disabled:opacity-50 disabled:pointer-events-none"
+              >
+                <Navigation size={14} />
+                <span>Start Trip</span>
+              </button>
+              <button
+                onClick={() => triggerToast("Trip paused. Logging rest stop duration HOS values.")}
+                disabled={featuredTrip.status !== "DISPATCHED"}
+                className="flex h-9 items-center gap-1.5 px-4 border border-border-app hover:bg-gray-50 text-text-secondary hover:text-text-primary text-xs font-bold rounded-m transition-all shadow-small cursor-pointer active:scale-95 disabled:opacity-50 disabled:pointer-events-none"
+              >
+                <Clock size={14} />
+                <span>Pause Trip</span>
+              </button>
+              <button
+                onClick={() => handleCompleteTrip(featuredTrip.id)}
+                disabled={featuredTrip.status !== "DISPATCHED"}
+                className="flex h-9 items-center gap-1.5 px-4 bg-success text-text-on-primary hover:bg-success/95 text-xs font-bold rounded-m transition-all shadow-small cursor-pointer active:scale-95 disabled:opacity-50 disabled:pointer-events-none"
+              >
+                <CheckCircle2 size={14} />
+                <span>Complete Trip</span>
+              </button>
+            </div>
+
             <button
-              onClick={() => triggerToast("Trip TRP-9482 started. GPS telemetry tracking activated.")}
-              className="flex h-9 items-center gap-1.5 px-4 bg-primary hover:bg-primary/95 text-text-on-primary text-xs font-bold rounded-m transition-all shadow-small cursor-pointer active:scale-95"
+              onClick={() => triggerToast("Exception logging triggered. Dispatch operations notified.")}
+              className="flex h-9 items-center gap-1.5 px-4 border border-error text-error hover:bg-error-light/20 text-xs font-bold rounded-m transition-all shadow-small cursor-pointer active:scale-95"
             >
-              <Navigation size={14} />
-              <span>Start Trip</span>
-            </button>
-            <button
-              onClick={() => triggerToast("Trip paused. Logging rest stop duration HOS values.")}
-              className="flex h-9 items-center gap-1.5 px-4 border border-border-app hover:bg-gray-50 text-text-secondary hover:text-text-primary text-xs font-bold rounded-m transition-all shadow-small cursor-pointer active:scale-95"
-            >
-              <Clock size={14} />
-              <span>Pause Trip</span>
-            </button>
-            <button
-              onClick={() => triggerToast("Trip completed. Uploading cargo weight receipts and manifest logs.")}
-              className="flex h-9 items-center gap-1.5 px-4 bg-success text-text-on-primary hover:bg-success/95 text-xs font-bold rounded-m transition-all shadow-small cursor-pointer active:scale-95"
-            >
-              <CheckCircle2 size={14} />
-              <span>Complete Trip</span>
+              <AlertTriangle size={14} />
+              <span>Report Issue</span>
             </button>
           </div>
-
-          <button
-            onClick={() => triggerToast("Exception logging triggered. Dispatch operations notified.")}
-            className="flex h-9 items-center gap-1.5 px-4 border border-error text-error hover:bg-error-light/20 text-xs font-bold rounded-m transition-all shadow-small cursor-pointer active:scale-95"
-          >
-            <AlertTriangle size={14} />
-            <span>Report Issue</span>
-          </button>
-        </div>
+        )}
 
       </div>
 
@@ -610,43 +839,17 @@ export default function DriverDashboard() {
           
           {/* Timeline node connector path */}
           {(() => {
-            const scheduleTrips = [
-              {
-                id: "TRP-9480",
-                pickup: "Oakland Depot (OAK-2)",
-                destination: "San Francisco Cargo Depot (SFO-1)",
-                scheduledTime: "06:00 AM - 07:30 AM",
-                duration: "1.5h",
-                priority: "Medium",
-                status: "Completed" as const,
-                color: "success"
-              },
-              {
-                id: "TRP-9482",
-                pickup: "San Francisco Cargo Depot (SFO-1)",
-                destination: "Los Angeles Port Terminal (LAX-4)",
-                scheduledTime: "08:00 AM - 02:35 PM",
-                duration: "6.5h",
-                priority: "High",
-                status: "In Progress" as const,
-                color: "primary"
-              },
-              {
-                id: "TRP-9486",
-                pickup: "Los Angeles Port Terminal (LAX-4)",
-                destination: "San Diego Distribution Center (SAN-2)",
-                scheduledTime: "03:30 PM - 05:45 PM",
-                duration: "2.25h",
-                priority: "Low",
-                status: "Upcoming" as const,
-                color: "warning"
-              }
-            ];
+            return driverTrips.map((trip) => {
+              const isCompleted = trip.status === "COMPLETED";
+              const isActive = trip.status === "DISPATCHED";
+              const isUpcoming = trip.status === "SCHEDULED";
 
-            return scheduleTrips.map((trip) => {
-              const isCompleted = trip.status === "Completed";
-              const isActive = trip.status === "In Progress";
-              const isUpcoming = trip.status === "Upcoming";
+              const scheduledTime = `${new Date(trip.scheduledStart).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} - ${new Date(trip.scheduledEnd).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
+              const duration = `${Math.max(1, Math.round((new Date(trip.scheduledEnd).getTime() - new Date(trip.scheduledStart).getTime()) / (3600 * 1000)))}h`;
+              const priority = trip.cargoWeight && trip.cargoWeight > 8000 
+                ? "High" 
+                : (trip.cargoWeight && trip.cargoWeight > 3000 ? "Medium" : "Low");
+              const displayStatus = trip.status === "COMPLETED" ? "Completed" : trip.status === "DISPATCHED" ? "In Progress" : "Upcoming";
 
               return (
                 <div key={trip.id} className="relative">
@@ -667,42 +870,42 @@ export default function DriverDashboard() {
                     ${isActive ? "border-primary/35 shadow-card" : ""}
                     ${isUpcoming ? "border-border-app opacity-60" : ""}
                   `}>
-                    <div className="flex flex-col md:flex-row gap-5 items-start md:items-center">
+                    <div className="flex flex-col md:flex-row gap-5 items-start md:items-center font-sans">
                       
                       {/* Time block */}
                       <div className="space-y-0.5 shrink-0">
                         <span className="text-[9px] font-bold text-text-secondary uppercase">Scheduled Block</span>
-                        <span className="block text-xs font-bold text-text-primary">{trip.scheduledTime}</span>
-                        <span className="text-[10px] text-text-secondary block">Duration: {trip.duration}</span>
+                        <span className="block text-xs font-bold text-text-primary">{scheduledTime}</span>
+                        <span className="text-[10px] text-text-secondary block font-semibold">Duration: {duration}</span>
                       </div>
 
                       {/* Path specification */}
                       <div className="space-y-1">
-                        <div className="flex items-center gap-1.5">
+                        <div className="flex items-center gap-1.5 flex-wrap">
                           <span className="font-mono font-bold text-[9px] text-primary bg-primary-light px-1.5 py-0.2 rounded">
-                            {trip.id}
+                            {trip.tripNumber || trip.id}
                           </span>
                           <span className={`inline-block px-1.5 py-0.2 text-[8px] font-bold rounded uppercase tracking-wider border
-                            ${trip.priority === "High" ? "bg-error-light text-error border-error/20" : ""}
-                            ${trip.priority === "Medium" ? "bg-primary-light text-primary border-primary/20" : ""}
-                            ${trip.priority === "Low" ? "bg-gray-100 text-text-secondary border-gray-200" : ""}
+                            ${priority === "High" ? "bg-error-light text-error border-error/20" : ""}
+                            ${priority === "Medium" ? "bg-primary-light text-primary border-primary/20" : ""}
+                            ${priority === "Low" ? "bg-gray-100 text-text-secondary border-gray-200" : ""}
                           `}>
-                            {trip.priority} Priority
+                            {priority} Priority
                           </span>
                           
                           {/* Status Badge */}
                           <span className={`inline-block px-1.5 py-0.2 text-[8px] font-bold rounded uppercase tracking-wider border
-                            ${trip.status === "Completed" ? "bg-success-light text-success border-success/20" : ""}
-                            ${trip.status === "In Progress" ? "bg-primary-light text-primary border-primary/20" : ""}
-                            ${trip.status === "Upcoming" ? "bg-gray-100 text-text-secondary border-gray-200" : ""}
+                            ${isCompleted ? "bg-success-light text-success border-success/20" : ""}
+                            ${isActive ? "bg-primary-light text-primary border-primary/20 animate-pulse" : ""}
+                            ${isUpcoming ? "bg-gray-100 text-text-secondary border-gray-200" : ""}
                           `}>
-                            {trip.status}
+                            {displayStatus}
                           </span>
                         </div>
                         
                         {/* Pickup/Destination Text */}
                         <span className="text-xs text-text-primary block font-semibold mt-1">
-                          {trip.pickup} ➔ {trip.destination}
+                          {trip.startLocation} ➔ {trip.endLocation}
                         </span>
                       </div>
 
@@ -711,7 +914,7 @@ export default function DriverDashboard() {
                     {/* Actions Block */}
                     <div className="flex items-center gap-2 shrink-0">
                       <button
-                        onClick={() => triggerToast(`Opening manifest and cargo weight logs for ${trip.id}.`)}
+                        onClick={() => triggerToast(`Opening manifest and cargo weight logs for ${trip.tripNumber || trip.id}.`)}
                         className="flex h-9 items-center justify-center px-4 border border-border-app bg-white hover:bg-gray-50 text-xs font-bold text-text-secondary hover:text-text-primary rounded-m transition-all shadow-small cursor-pointer active:scale-95 shrink-0"
                       >
                         View Details
@@ -719,7 +922,7 @@ export default function DriverDashboard() {
 
                       {isActive && (
                         <button
-                          onClick={() => triggerToast(`GPS route navigation mapping loaded for ${trip.id}.`)}
+                          onClick={() => triggerToast(`GPS route navigation mapping loaded for ${trip.tripNumber || trip.id}.`)}
                           className="flex h-9 items-center gap-1.5 px-4 bg-primary hover:bg-primary/95 text-xs font-bold text-text-on-primary rounded-m transition-all shadow-small cursor-pointer active:scale-95 shrink-0"
                         >
                           <Navigation size={13} />
@@ -729,8 +932,8 @@ export default function DriverDashboard() {
 
                       {isUpcoming && (
                         <button
-                          onClick={() => triggerToast(`Initiating trip ${trip.id}. Dispatch operations center notified.`)}
-                          className="flex h-9 items-center gap-1.5 px-4 bg-success hover:bg-success/95 text-xs font-bold text-text-on-primary rounded-m transition-all shadow-small cursor-pointer active:scale-95 shrink-0"
+                          onClick={() => handleStartTrip(trip.id)}
+                          className="flex h-9 items-center gap-1.5 px-4 bg-success hover:bg-success/95 text-xs font-bold text-text-on-primary rounded-m transition-all shadow-small cursor-pointer active:scale-95 shrink-0 animate-pulse"
                         >
                           <Play size={13} />
                           <span>Start Trip</span>

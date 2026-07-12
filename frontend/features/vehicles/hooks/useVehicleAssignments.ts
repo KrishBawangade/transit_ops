@@ -72,6 +72,8 @@ export function useVehicleAssignments() {
 
   return {
     assignments: filteredAssignments,
+    allAssignments: assignments,
+    allVehicles: vehicles,
     isLoading,
     error,
     search,

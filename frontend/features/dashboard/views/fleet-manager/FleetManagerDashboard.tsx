@@ -30,6 +30,13 @@ import {
   Layers
 } from "lucide-react";
 import Link from "next/link";
+import { vehicleService } from "@/features/vehicles/services/vehicle.service";
+import { tripService } from "@/features/trips/services/trip.service";
+import { dashboardService } from "@/features/dashboard/services/dashboard.service";
+import { driverService } from "@/features/drivers/services/driver.service";
+import { maintenanceService } from "@/features/maintenance/services/maintenance.service";
+import { useAuth } from "@/lib/providers/auth-provider";
+import { apiClient } from "@/lib/core/services/api-client";
 
 // Types definition for self-contained components
 interface Vehicle {
@@ -44,6 +51,7 @@ interface Vehicle {
   engineTemp: number;
   batteryHealth?: number;
   lastService: string;
+  odometer?: number;
 }
 
 interface Alert {
@@ -67,12 +75,15 @@ interface Trip {
 }
 
 export default function FleetManagerDashboard() {
+  const { user } = useAuth();
+
   // 1. Core State
   const [activeTab, setActiveTab] = useState<"overview" | "vehicles" | "alerts">("overview");
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("All");
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [lastSyncTime, setLastSyncTime] = useState<string>("Just now");
+  const [isLoading, setIsLoading] = useState(true);
   
   // Modals state for Operations Playbook actions
   const [activeActionModal, setActiveActionModal] = useState<string | null>(null);
@@ -82,7 +93,7 @@ export default function FleetManagerDashboard() {
   const [dispatchForm, setDispatchForm] = useState({ vehicleId: "", driverId: "", route: "" });
   const [maintenanceForm, setMaintenanceForm] = useState({ vehicleId: "", issue: "", severity: "warning" });
 
-  // 2. Mock Data State
+  // 2. Mock Data State (acting as initial fallbacks)
   const [vehicles, setVehicles] = useState<Vehicle[]>([
     { id: "V-8821", name: "Volvo FH16", type: "Heavy Duty Cargo", status: "Active", fuelType: "Diesel", fuelLevel: 72, speed: 84, driver: "Alex Rivera", engineTemp: 98, lastService: "2026-05-10" },
     { id: "V-7710", name: "Scania R500", type: "Heavy Duty Cargo", status: "Active", fuelType: "Diesel", fuelLevel: 45, speed: 112, driver: "Sarah Connor", engineTemp: 85, lastService: "2026-06-01" },
@@ -109,12 +120,14 @@ export default function FleetManagerDashboard() {
     { id: "TRP-9486", vehicle: "Tesla Semi (V-1102)", driver: "Elena Rostova", route: "Seattle Depot → Portland Yard", status: "In Transit", eta: "13:40 (In 1h 20m)", progress: 70 }
   ]);
 
+  const [driversList, setDriversList] = useState<any[]>([]);
+
   // 3. Dynamic Calculation Metrics
   const calculatedMetrics = useMemo(() => {
     const totalVehicles = vehicles.length;
     const activeVehicles = vehicles.filter(v => v.status === "Active").length;
     const maintenanceVehicles = vehicles.filter(v => v.status === "Maintenance").length;
-    const activeDrivers = vehicles.filter(v => v.driver !== "None").length;
+    const activeDrivers = vehicles.filter(v => v.driver !== "None" && v.driver !== "Unassigned").length;
     const activeAlerts = alerts.filter(a => !a.resolved).length;
     const criticalAlertsCount = alerts.filter(a => a.severity === "critical" && !a.resolved).length;
     
@@ -122,7 +135,7 @@ export default function FleetManagerDashboard() {
     const utilizationRate = totalVehicles > 0 ? Math.round((activeVehicles / totalVehicles) * 100) : 0;
     
     // Average Fleet Fuel / Battery Level
-    const avgFuel = Math.round(vehicles.reduce((acc, curr) => acc + curr.fuelLevel, 0) / totalVehicles);
+    const avgFuel = Math.round(vehicles.reduce((acc, curr) => acc + (curr.fuelLevel || 0), 0) / totalVehicles);
 
     return {
       totalVehicles,
@@ -136,21 +149,115 @@ export default function FleetManagerDashboard() {
     };
   }, [vehicles, alerts]);
 
-  // 4. Simulated Real-Time Updates Ticker
+  // 4. Handlers
+  const handleManualRefresh = async () => {
+    setIsRefreshing(true);
+    try {
+      const [vehiclesData, tripsResponse, metricsData, driversResponse] = await Promise.all([
+        vehicleService.getVehicles(),
+        apiClient.get<any>("/trips?limit=100"),
+        dashboardService.getMetrics(),
+        driverService.listDrivers({ limit: 100 })
+      ]);
+
+      if (vehiclesData && vehiclesData.length > 0) {
+        // Map global Vehicle from service to local Vehicle expected by FleetManagerDashboard
+        const mappedVehicles = vehiclesData.map((v: any) => {
+          let localStatus: "Active" | "Idle" | "Maintenance" | "Offline" = "Idle";
+          if (v.status === "On Trip" || v.status === "ON_TRIP") localStatus = "Active";
+          if (v.status === "In Shop" || v.status === "IN_SHOP") localStatus = "Maintenance";
+          if (v.status === "Retired" || v.status === "RETIRED") localStatus = "Offline";
+
+          return {
+            id: v.id,
+            name: v.name || `${v.manufacturer || ''} ${v.model || ''}`,
+            type: v.type || "Heavy Duty Cargo",
+            status: localStatus,
+            fuelType: v.fuelType === "Electric" || v.fuelType === "ELECTRIC" ? "Electric" : "Diesel",
+            fuelLevel: v.fuelLevel !== undefined ? v.fuelLevel : 75,
+            speed: v.status === "On Trip" || v.status === "ON_TRIP" ? 65 : 0,
+            driver: v.driverName || "None",
+            engineTemp: v.fuelType === "Electric" || v.fuelType === "ELECTRIC" ? 32 : 85,
+            batteryHealth: v.fuelType === "Electric" || v.fuelType === "ELECTRIC" ? 95 : undefined,
+            lastService: v.fitnessExpiry || "2026-06-01",
+            odometer: v.odometer !== undefined ? v.odometer : 50000
+          } as unknown as Vehicle;
+        });
+        setVehicles(mappedVehicles);
+      }
+      
+      if (tripsResponse && tripsResponse.data) {
+        const mappedTrips = tripsResponse.data.map((t: any) => ({
+          id: t.tripNumber || t.id,
+          vehicle: `${t.vehicle?.make} ${t.vehicle?.model} (${t.vehicle?.registrationNumber || ''})`,
+          driver: t.driver?.user ? `${t.driver.user.firstName} ${t.driver.user.lastName}` : 'Unassigned',
+          route: `${t.startLocation} → ${t.endLocation}`,
+          status: t.status === "DISPATCHED" ? "In Transit" : t.status === "SCHEDULED" ? "Loading" : t.status === "COMPLETED" ? "Completed" : "Delayed",
+          eta: t.scheduledEnd ? new Date(t.scheduledEnd).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : 'Calculated',
+          progress: t.status === "COMPLETED" ? 100 : t.status === "DISPATCHED" ? 50 : 0
+        }));
+        setTrips(mappedTrips);
+      }
+
+      if (metricsData && metricsData.metrics && metricsData.metrics.alerts) {
+        const mappedAlerts = metricsData.metrics.alerts.map((a: any, idx: number) => ({
+          id: `ALT-${100 + idx}`,
+          title: a.title,
+          assetId: "SYSTEM",
+          assetName: "System Exception",
+          time: "Just now",
+          severity: a.severity,
+          resolved: false
+        }));
+        setAlerts(mappedAlerts);
+      }
+
+      if (driversResponse && driversResponse.data) {
+        setDriversList(driversResponse.data);
+      }
+      
+      const now = new Date();
+      setLastSyncTime(`Synced at: ${now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}`);
+    } catch (err) {
+      console.warn("Manual refresh failed, using mock data fallback:", err);
+      const now = new Date();
+      setLastSyncTime(`Synced at: ${now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })} (offline)`);
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
+
+  // Initial load
+  useEffect(() => {
+    const loadInitData = async () => {
+      setIsLoading(true);
+      try {
+        await handleManualRefresh();
+      } catch (err) {
+        console.error("Dashboard initial load failed", err);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    loadInitData();
+  }, []);
+
+  // Telemetry updates ticker
   useEffect(() => {
     const timer = setInterval(() => {
-      // Slightly modify vehicle telemetry to simulate live data stream
       setVehicles(prev => prev.map(v => {
         if (v.status === "Active") {
-          // Adjust speed slightly (+/- 4km/h)
           const speedDelta = Math.floor(Math.random() * 9) - 4;
-          const newSpeed = Math.max(40, Math.min(120, v.speed + speedDelta));
-          // Slowly decrease fuel/battery level
+          const newSpeed = Math.max(40, Math.min(120, (v.speed || 60) + speedDelta));
+          
+          // Fuel leak simulation or general update
+          const prevFuel = v.fuelLevel !== undefined ? v.fuelLevel : 75;
           const fuelLeak = Math.random() > 0.7 ? 1 : 0;
-          const newFuel = Math.max(5, v.fuelLevel - fuelLeak);
-          // Modulate engine temperature
+          const newFuel = Math.max(5, prevFuel - fuelLeak);
+          
+          const prevTemp = v.engineTemp !== undefined ? v.engineTemp : 80;
           const tempDelta = Math.floor(Math.random() * 5) - 2;
-          const newTemp = Math.max(70, Math.min(105, v.engineTemp + tempDelta));
+          const newTemp = Math.max(70, Math.min(105, prevTemp + tempDelta));
           
           return {
             ...v,
@@ -162,7 +269,6 @@ export default function FleetManagerDashboard() {
         return v;
       }));
 
-      // Update ETA details and Trip Progress
       setTrips(prev => prev.map(t => {
         if (t.status === "In Transit") {
           const progressDelta = Math.random() > 0.6 ? 1 : 0;
@@ -171,33 +277,10 @@ export default function FleetManagerDashboard() {
         }
         return t;
       }));
-
-      // Update sync time caption
-      const now = new Date();
-      setLastSyncTime(`Last updated: ${now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}`);
     }, 5000);
 
     return () => clearInterval(timer);
-  }, []);
-
-  // 5. Handlers
-  const handleManualRefresh = () => {
-    setIsRefreshing(true);
-    setTimeout(() => {
-      setIsRefreshing(false);
-      const now = new Date();
-      setLastSyncTime(`Synced at: ${now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}`);
-      
-      // Auto resolve one random resolved warning alert for demonstration
-      const unresolved = alerts.filter(a => !a.resolved);
-      if (unresolved.length > 0) {
-        const randomIndex = Math.floor(Math.random() * unresolved.length);
-        const alertToResolve = unresolved[randomIndex];
-        showToast(`System auto-resolved Exception: ${alertToResolve.id}`);
-        setAlerts(prev => prev.map(a => a.id === alertToResolve.id ? { ...a, resolved: true } : a));
-      }
-    }, 800);
-  };
+  }, [vehicles]);
 
   const showToast = (message: string) => {
     setActionSuccessMessage(message);
@@ -211,7 +294,7 @@ export default function FleetManagerDashboard() {
     showToast(`Successfully cleared Exception notification ${alertId}`);
   };
 
-  const executeDispatch = (e: React.FormEvent) => {
+  const executeDispatch = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!dispatchForm.vehicleId || !dispatchForm.driverId || !dispatchForm.route) {
       alert("Please fill all dispatch parameters.");
@@ -221,61 +304,122 @@ export default function FleetManagerDashboard() {
     const targetVehicle = vehicles.find(v => v.id === dispatchForm.vehicleId);
     if (!targetVehicle) return;
 
-    // Transition vehicle status
-    setVehicles(prev => prev.map(v => 
-      v.id === dispatchForm.vehicleId 
-        ? { ...v, status: "Active", driver: dispatchForm.driverId, speed: 65 } 
-        : v
-    ));
+    let startLocation = "Depot";
+    let endLocation = "Destination";
+    if (dispatchForm.route.includes("→")) {
+      const parts = dispatchForm.route.split("→");
+      startLocation = parts[0].trim();
+      endLocation = parts[1].trim();
+    } else if (dispatchForm.route.includes("to")) {
+      const parts = dispatchForm.route.split("to");
+      startLocation = parts[0].trim();
+      endLocation = parts[1].trim();
+    } else {
+      endLocation = dispatchForm.route.trim();
+    }
 
-    // Append new active trip
-    const newTripId = `TRP-${Math.floor(Math.random() * 9000) + 1000}`;
-    const newTrip: Trip = {
-      id: newTripId,
-      vehicle: `${targetVehicle.name} (${targetVehicle.id})`,
-      driver: dispatchForm.driverId,
-      route: dispatchForm.route,
-      status: "In Transit",
-      eta: "Calculated (In 2h)",
-      progress: 0
-    };
+    try {
+      let finalDriverId = dispatchForm.driverId;
+      const foundDriver = driversList.find(d => `${d.user?.firstName} ${d.user?.lastName}` === dispatchForm.driverId || d.id === dispatchForm.driverId);
+      if (foundDriver) {
+        finalDriverId = foundDriver.id;
+      } else if (driversList.length > 0) {
+        finalDriverId = driversList[0].id;
+      }
 
-    setTrips(prev => [newTrip, ...prev]);
+      const randomTripNumber = `TR-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`;
+
+      await tripService.createTrip({
+        tripNumber: randomTripNumber,
+        driverId: finalDriverId,
+        vehicleId: dispatchForm.vehicleId,
+        status: "DISPATCHED",
+        startLocation,
+        endLocation,
+        cargoWeight: 10,
+        cargoDescription: "Cargo",
+        scheduledStart: new Date().toISOString(),
+        scheduledEnd: new Date(Date.now() + 4 * 3600 * 1000).toISOString(),
+      });
+
+      showToast(`Dispatched ${targetVehicle.name} on route ${dispatchForm.route} (Saved to database)`);
+      handleManualRefresh();
+    } catch (err: any) {
+      console.warn("Failed to save trip to backend, updating local state only:", err);
+      setVehicles(prev => prev.map(v => 
+        v.id === dispatchForm.vehicleId 
+          ? { ...v, status: "Active", driver: dispatchForm.driverId, speed: 65 } 
+          : v
+      ));
+
+      const newTripId = `TRP-${Math.floor(Math.random() * 9000) + 1000}`;
+      const newTrip: Trip = {
+        id: newTripId,
+        vehicle: `${targetVehicle.name} (${targetVehicle.id})`,
+        driver: dispatchForm.driverId,
+        route: dispatchForm.route,
+        status: "In Transit",
+        eta: "Calculated (In 2h)",
+        progress: 0
+      };
+
+      setTrips(prev => [newTrip, ...prev]);
+      showToast(`Dispatched ${targetVehicle.name} with ${dispatchForm.driverId} (Offline fallback mode)`);
+    }
+
     setActiveActionModal(null);
-    showToast(`Dispatched ${targetVehicle.name} with ${dispatchForm.driverId} on route ${dispatchForm.route}`);
     setDispatchForm({ vehicleId: "", driverId: "", route: "" });
   };
 
-  const executeMaintenance = (e: React.FormEvent) => {
+  const executeMaintenance = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!maintenanceForm.vehicleId || !maintenanceForm.issue) {
       alert("Please specify a vehicle and details of the mechanical exception.");
       return;
     }
 
-    // Set vehicle status to maintenance
-    setVehicles(prev => prev.map(v => 
-      v.id === maintenanceForm.vehicleId 
-        ? { ...v, status: "Maintenance", speed: 0, driver: "None" } 
-        : v
-    ));
-
-    // Append a critical alert
-    const newAlertId = `ALT-${Math.floor(Math.random() * 100) + 300}`;
     const targetVehicle = vehicles.find(v => v.id === maintenanceForm.vehicleId);
-    const newAlert: Alert = {
-      id: newAlertId,
-      title: `${maintenanceForm.issue} (Scheduled)`,
-      assetId: maintenanceForm.vehicleId,
-      assetName: targetVehicle?.name || "Unknown Vehicle",
-      time: "Just now",
-      severity: maintenanceForm.severity as "critical" | "warning",
-      resolved: false
-    };
 
-    setAlerts(prev => [newAlert, ...prev]);
+    try {
+      const loggedById = user?.id || "d1000000-0000-0000-0000-000000000001";
+
+      await maintenanceService.createMaintenanceLog({
+        vehicleId: maintenanceForm.vehicleId,
+        loggedById,
+        description: maintenanceForm.issue,
+        type: "PREVENTIVE",
+        status: "OPEN",
+        cost: 0,
+        odometerAtService: targetVehicle?.odometer || 50000,
+        startDate: new Date().toISOString(),
+      });
+
+      showToast(`Logged maintenance task for ${targetVehicle?.name || "vehicle"} (Saved to database)`);
+      handleManualRefresh();
+    } catch (err) {
+      console.warn("Failed to create maintenance log on backend, updating local state only:", err);
+      setVehicles(prev => prev.map(v => 
+        v.id === maintenanceForm.vehicleId 
+          ? { ...v, status: "Maintenance", speed: 0, driver: "None" } 
+          : v
+      ));
+
+      const newAlertId = `ALT-${Math.floor(Math.random() * 100) + 300}`;
+      const newAlert: Alert = {
+        id: newAlertId,
+        title: `${maintenanceForm.issue} (Scheduled)`,
+        assetId: maintenanceForm.vehicleId,
+        assetName: targetVehicle?.name || "Unknown Vehicle",
+        time: "Just now",
+        severity: maintenanceForm.severity as "critical" | "warning",
+        resolved: false
+      };
+
+      setAlerts(prev => [newAlert, ...prev]);
+      showToast(`Logged maintenance task for ${targetVehicle?.name}. Exception alert ${newAlertId} raised.`);
+    }
+
     setActiveActionModal(null);
-    showToast(`Logged maintenance task for ${targetVehicle?.name}. Exception alert ${newAlertId} raised.`);
     setMaintenanceForm({ vehicleId: "", issue: "", severity: "warning" });
   };
 
@@ -294,6 +438,17 @@ export default function FleetManagerDashboard() {
   const activeAlertsList = useMemo(() => {
     return alerts.filter(a => !a.resolved);
   }, [alerts]);
+
+  if (isLoading) {
+    return (
+      <div className="flex h-[500px] w-full items-center justify-center bg-surface-app rounded-m border border-border-app p-12">
+        <div className="flex flex-col items-center gap-2 select-none">
+          <RefreshCw className="h-8 w-8 animate-spin text-primary animate-pulse" />
+          <p className="text-xs text-text-secondary font-semibold">Loading Operational Command Center...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-8 max-w-7xl mx-auto px-4 py-4">
@@ -1160,10 +1315,18 @@ export default function FleetManagerDashboard() {
                   className="w-full h-9 px-3 border border-border-app rounded-m bg-gray-50 focus:outline-none focus:border-primary text-text-primary font-medium"
                 >
                   <option value="">-- Select Driver --</option>
-                  <option value="John Miller">John Miller (HOS: 2.5/8h)</option>
-                  <option value="Clara Vance">Clara Vance (HOS: 0/8h)</option>
-                  <option value="Stan Kowalski">Stan Kowalski (HOS: 1.2/8h)</option>
-                  <option value="Marcus Vance">Marcus Vance (HOS: 4/8h)</option>
+                  {driversList && driversList.length > 0 ? (
+                    driversList.map(d => (
+                      <option key={d.id} value={`${d.user?.firstName} ${d.user?.lastName}`}>{d.user?.firstName} {d.user?.lastName} (Class CDL: {d.licenseClass || 'A'})</option>
+                    ))
+                  ) : (
+                    <>
+                      <option value="John Miller">John Miller (HOS: 2.5/8h)</option>
+                      <option value="Clara Vance">Clara Vance (HOS: 0/8h)</option>
+                      <option value="Stan Kowalski">Stan Kowalski (HOS: 1.2/8h)</option>
+                      <option value="Marcus Vance">Marcus Vance (HOS: 4/8h)</option>
+                    </>
+                  )}
                 </select>
               </div>
 

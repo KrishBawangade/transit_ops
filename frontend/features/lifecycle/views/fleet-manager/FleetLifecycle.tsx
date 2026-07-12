@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import { 
   Truck, 
   Search, 
@@ -23,9 +23,11 @@ import {
   Layers,
   X,
   Gauge,
-  Cpu
+  Cpu,
+  RefreshCw
 } from "lucide-react";
 import Link from "next/link";
+import { vehicleService } from "@/features/vehicles/services/vehicle.service";
 
 interface VehicleLifecycle {
   id: string;
@@ -52,6 +54,55 @@ interface VehicleLifecycle {
   distanceKm: number;
 }
 
+function mapVehicleToLifecycle(v: any): VehicleLifecycle {
+  let phase: VehicleLifecycle["phase"] = "Deployment";
+  let phaseProgress = 90;
+  let status: VehicleLifecycle["status"] = "Active";
+
+  if (v.status === "On Trip" || v.status === "ON_TRIP") {
+    status = "Active";
+    phase = "Deployment";
+    phaseProgress = 95;
+  } else if (v.status === "Available" || v.status === "AVAILABLE" || v.status === "Idle") {
+    status = "Idle";
+    phase = "Registration";
+    phaseProgress = 100;
+  } else if (v.status === "In Shop" || v.status === "IN_SHOP" || v.status === "Maintenance") {
+    status = "Maintenance";
+    phase = "Maintenance";
+    phaseProgress = 35;
+  } else if (v.status === "Retired" || v.status === "RETIRED" || v.status === "Offline") {
+    status = "Retired";
+    phase = "Retirement";
+    phaseProgress = 100;
+  }
+
+  const purchaseYear = v.purchaseDate ? new Date(v.purchaseDate).getFullYear() : 2024;
+  const currentYear = new Date().getFullYear();
+  const ageYears = Math.max(0.1, currentYear - purchaseYear);
+
+  return {
+    id: v.id,
+    name: v.name || v.registrationNumber,
+    model: v.model || "Unknown Model",
+    driver: v.driverName || "Unassigned",
+    status,
+    phase,
+    phaseProgress,
+    purchaseDate: v.purchaseDate || "2024-01-01",
+    purchaseCost: v.acquisitionCost || 120000,
+    ageYears,
+    expectedLifeYears: 10,
+    healthScore: v.status === "In Shop" || v.status === "IN_SHOP" ? 65 : 95,
+    insuranceExpiry: v.insuranceExpiry || "2027-01-01",
+    registrationExpiry: v.fitnessExpiry || "2027-01-01",
+    pucStatus: "Valid",
+    fuelCostMtd: 2450,
+    maintenanceCostMtd: v.status === "In Shop" || v.status === "IN_SHOP" ? 3450 : 450,
+    distanceKm: v.odometer || 45000
+  };
+}
+
 export default function FleetLifecycle() {
   // 1. Core States
   const [searchTerm, setSearchTerm] = useState("");
@@ -59,6 +110,7 @@ export default function FleetLifecycle() {
   const [selectedVehicleId, setSelectedVehicleId] = useState("V-8821");
   const [isAddVehicleOpen, setIsAddVehicleOpen] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
   // Add Vehicle Form State
   const [newVehicleForm, setNewVehicleForm] = useState({
@@ -71,15 +123,36 @@ export default function FleetLifecycle() {
     expectedLife: 10
   });
 
-  // 2. Mock Lifecycle Database
-  const [vehicles, setVehicles] = useState<VehicleLifecycle[]>([
-    { id: "V-8821", name: "Volvo FH16 Heavy", model: "Volvo FH16 (Diesel)", driver: "Alex Rivera", status: "Active", phase: "Maintenance", phaseProgress: 80, purchaseDate: "2022-04-10", purchaseCost: 145000, ageYears: 4.2, expectedLifeYears: 10, healthScore: 92, insuranceExpiry: "2026-11-15", registrationExpiry: "2027-04-10", pucStatus: "Valid", fuelCostMtd: 2450, maintenanceCostMtd: 820, distanceKm: 45200 },
-    { id: "V-2210", name: "Peterbilt Road Master", model: "Peterbilt 579 (Diesel)", driver: "Dave Miller", status: "Active", phase: "Deployment", phaseProgress: 95, purchaseDate: "2023-08-15", purchaseCost: 138000, ageYears: 2.9, expectedLifeYears: 10, healthScore: 88, insuranceExpiry: "2026-08-20", registrationExpiry: "2028-08-15", pucStatus: "Valid", fuelCostMtd: 2890, maintenanceCostMtd: 450, distanceKm: 32100 },
-    { id: "V-1102", name: "Tesla Semi-EV 1", model: "Tesla Semi Gen 1 (EV)", driver: "Elena Rostova", status: "Maintenance", phase: "Repairs", phaseProgress: 45, purchaseDate: "2021-01-20", purchaseCost: 180000, ageYears: 5.5, expectedLifeYears: 8, healthScore: 64, insuranceExpiry: "2026-07-28", registrationExpiry: "2026-07-20", pucStatus: "Expiring", fuelCostMtd: 820, maintenanceCostMtd: 3450, distanceKm: 65100 },
-    { id: "V-5582", name: "Mack Anthem Hauler", model: "Mack Anthem (Diesel)", driver: "Marcus Vance", status: "Active", phase: "Deployment", phaseProgress: 75, purchaseDate: "2024-03-02", purchaseCost: 125000, ageYears: 2.3, expectedLifeYears: 12, healthScore: 95, insuranceExpiry: "2026-09-02", registrationExpiry: "2029-03-02", pucStatus: "Valid", fuelCostMtd: 2150, maintenanceCostMtd: 180, distanceKm: 18400 },
-    { id: "V-7710", name: "Scania Eco-Liner", model: "Scania R500 (Hybrid)", driver: "Sarah Jenkins", status: "Idle", phase: "Maintenance", phaseProgress: 20, purchaseDate: "2020-05-18", purchaseCost: 152000, ageYears: 6.1, expectedLifeYears: 10, healthScore: 78, insuranceExpiry: "2026-10-18", registrationExpiry: "2025-05-18", pucStatus: "Expired", fuelCostMtd: 1450, maintenanceCostMtd: 1250, distanceKm: 89000 },
-    { id: "V-4412", name: "Kenworth Express", model: "Kenworth T680 (Diesel)", driver: "Jameson Blake", status: "Retired", phase: "Retirement", phaseProgress: 100, purchaseDate: "2016-11-05", purchaseCost: 110000, ageYears: 9.6, expectedLifeYears: 10, healthScore: 42, insuranceExpiry: "2025-11-05", registrationExpiry: "2026-11-05", pucStatus: "Expired", fuelCostMtd: 0, maintenanceCostMtd: 5800, distanceKm: 245000 }
-  ]);
+  // 2. Lifecycle Database State
+  const [vehicles, setVehicles] = useState<VehicleLifecycle[]>([]);
+
+  useEffect(() => {
+    const loadData = async () => {
+      setIsLoading(true);
+      try {
+        const data = await vehicleService.getVehicles();
+        if (data && data.length > 0) {
+          setVehicles(data.map(mapVehicleToLifecycle));
+          setSelectedVehicleId(data[0].id);
+        } else {
+          setVehicles([
+            { id: "V-8821", name: "Volvo FH16 Heavy", model: "Volvo FH16 (Diesel)", driver: "Alex Rivera", status: "Active", phase: "Maintenance", phaseProgress: 80, purchaseDate: "2022-04-10", purchaseCost: 145000, ageYears: 4.2, expectedLifeYears: 10, healthScore: 92, insuranceExpiry: "2026-11-15", registrationExpiry: "2027-04-10", pucStatus: "Valid", fuelCostMtd: 2450, maintenanceCostMtd: 820, distanceKm: 45200 },
+            { id: "V-2210", name: "Peterbilt Road Master", model: "Peterbilt 579 (Diesel)", driver: "Dave Miller", status: "Active", phase: "Deployment", phaseProgress: 95, purchaseDate: "2023-08-15", purchaseCost: 138000, ageYears: 2.9, expectedLifeYears: 10, healthScore: 88, insuranceExpiry: "2026-08-20", registrationExpiry: "2028-08-15", pucStatus: "Valid", fuelCostMtd: 2890, maintenanceCostMtd: 450, distanceKm: 32100 },
+            { id: "V-1102", name: "Tesla Semi-EV 1", model: "Tesla Semi Gen 1 (EV)", driver: "Elena Rostova", status: "Maintenance", phase: "Repairs", phaseProgress: 45, purchaseDate: "2021-01-20", purchaseCost: 180000, ageYears: 5.5, expectedLifeYears: 8, healthScore: 64, insuranceExpiry: "2026-07-28", registrationExpiry: "2026-07-20", pucStatus: "Expiring", fuelCostMtd: 820, maintenanceCostMtd: 3450, distanceKm: 65100 },
+            { id: "V-5582", name: "Mack Anthem Hauler", model: "Mack Anthem (Diesel)", driver: "Marcus Vance", status: "Active", phase: "Deployment", phaseProgress: 75, purchaseDate: "2024-03-02", purchaseCost: 125000, ageYears: 2.3, expectedLifeYears: 12, healthScore: 95, insuranceExpiry: "2026-09-02", registrationExpiry: "2029-03-02", pucStatus: "Valid", fuelCostMtd: 2150, maintenanceCostMtd: 180, distanceKm: 18400 },
+            { id: "V-7710", name: "Scania Eco-Liner", model: "Scania R500 (Hybrid)", driver: "Sarah Jenkins", status: "Idle", phase: "Maintenance", phaseProgress: 20, purchaseDate: "2020-05-18", purchaseCost: 152000, ageYears: 6.1, expectedLifeYears: 10, healthScore: 78, insuranceExpiry: "2026-10-18", registrationExpiry: "2025-05-18", pucStatus: "Expired", fuelCostMtd: 1450, maintenanceCostMtd: 1250, distanceKm: 89000 },
+            { id: "V-4412", name: "Kenworth Express", model: "Kenworth T680 (Diesel)", driver: "Jameson Blake", status: "Retired", phase: "Retirement", phaseProgress: 100, purchaseDate: "2016-11-05", purchaseCost: 110000, ageYears: 9.6, expectedLifeYears: 10, healthScore: 42, insuranceExpiry: "2025-11-05", registrationExpiry: "2026-11-05", pucStatus: "Expired", fuelCostMtd: 0, maintenanceCostMtd: 5800, distanceKm: 245000 }
+          ]);
+          setSelectedVehicleId("V-8821");
+        }
+      } catch (err) {
+        console.error("Failed to load vehicle lifecycles, using mock data", err);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    loadData();
+  }, []);
 
   // 3. Selection & Filtering logic
   const filteredVehicles = useMemo(() => {
@@ -98,6 +171,9 @@ export default function FleetLifecycle() {
 
   // 4. Global KPIs calculations
   const kpis = useMemo(() => {
+    if (vehicles.length === 0) {
+      return { total: 0, active: 0, nearEol: 0, avgAge: "0", avgHealth: 0 };
+    }
     const total = vehicles.length;
     const active = vehicles.filter(v => v.status === "Active").length;
     const nearEol = vehicles.filter(v => (v.expectedLifeYears - v.ageYears) <= 1.5 && v.phase !== "Retirement").length;
@@ -121,31 +197,58 @@ export default function FleetLifecycle() {
       return;
     }
 
-    const newAsset: VehicleLifecycle = {
-      id: newVehicleForm.id,
+    const servicePayload = {
+      registrationNumber: newVehicleForm.id,
       name: newVehicleForm.name,
+      manufacturer: newVehicleForm.name.split(" ")[0] || "Volvo",
       model: newVehicleForm.model,
-      driver: newVehicleForm.driver || "Unassigned",
-      status: "Idle",
-      phase: newVehicleForm.phase,
-      phaseProgress: 10,
+      type: "Truck" as const,
+      capacity: "15 Tons",
       purchaseDate: new Date().toISOString().split("T")[0],
-      purchaseCost: Number(newVehicleForm.purchaseCost) || 120000,
-      ageYears: 0.1,
-      expectedLifeYears: Number(newVehicleForm.expectedLife) || 10,
-      healthScore: 100,
+      fuelType: newVehicleForm.model.toLowerCase().includes("ev") || newVehicleForm.model.toLowerCase().includes("electric") ? "Electric" : "Diesel",
+      odometer: 0,
+      acquisitionCost: Number(newVehicleForm.purchaseCost) || 120000,
       insuranceExpiry: new Date(Date.now() + 365 * 24 * 3600 * 1000).toISOString().split("T")[0],
-      registrationExpiry: new Date(Date.now() + 365 * 24 * 3600 * 1000 * 5).toISOString().split("T")[0],
-      pucStatus: "Valid",
-      fuelCostMtd: 0,
-      maintenanceCostMtd: 0,
-      distanceKm: 0
+      fitnessExpiry: new Date(Date.now() + 365 * 24 * 3600 * 1000 * 5).toISOString().split("T")[0],
+      status: "Available" as const,
+      notes: "Created via lifecycle dashboard."
     };
 
-    setVehicles(prev => [newAsset, ...prev]);
-    setSelectedVehicleId(newAsset.id);
+    vehicleService.createVehicle(servicePayload)
+      .then((created: any) => {
+        const lifecycleVehicle = mapVehicleToLifecycle(created);
+        setVehicles(prev => [lifecycleVehicle, ...prev]);
+        setSelectedVehicleId(lifecycleVehicle.id);
+        showToast(`Successfully registered new asset ${lifecycleVehicle.id} (${lifecycleVehicle.name}) in Procurement.`);
+      })
+      .catch((err: any) => {
+        console.warn("Backend vehicle creation failed, falling back to local simulation:", err);
+        const newAsset: VehicleLifecycle = {
+          id: newVehicleForm.id,
+          name: newVehicleForm.name,
+          model: newVehicleForm.model,
+          driver: newVehicleForm.driver || "Unassigned",
+          status: "Idle",
+          phase: newVehicleForm.phase,
+          phaseProgress: 10,
+          purchaseDate: new Date().toISOString().split("T")[0],
+          purchaseCost: Number(newVehicleForm.purchaseCost) || 120000,
+          ageYears: 0.1,
+          expectedLifeYears: Number(newVehicleForm.expectedLife) || 10,
+          healthScore: 100,
+          insuranceExpiry: new Date(Date.now() + 365 * 24 * 3600 * 1000).toISOString().split("T")[0],
+          registrationExpiry: new Date(Date.now() + 365 * 24 * 3600 * 1000 * 5).toISOString().split("T")[0],
+          pucStatus: "Valid",
+          fuelCostMtd: 0,
+          maintenanceCostMtd: 0,
+          distanceKm: 0
+        };
+        setVehicles(prev => [newAsset, ...prev]);
+        setSelectedVehicleId(newAsset.id);
+        showToast(`Successfully registered new asset ${newAsset.id} (${newAsset.name}) in Procurement.`);
+      });
+
     setIsAddVehicleOpen(false);
-    showToast(`Successfully registered new asset ${newAsset.id} (${newAsset.name}) in Procurement.`);
     setNewVehicleForm({
       id: "",
       name: "",
@@ -161,6 +264,17 @@ export default function FleetLifecycle() {
     setToastMessage(msg);
     setTimeout(() => setToastMessage(null), 4500);
   };
+
+  if (vehicles.length === 0 || !selectedVehicle) {
+    return (
+      <div className="flex h-[500px] w-full items-center justify-center">
+        <div className="flex flex-col items-center gap-2">
+          <RefreshCw className="h-8 w-8 animate-spin text-primary animate-pulse" />
+          <p className="text-xs text-text-secondary font-semibold">Loading Fleet Assets Lifecycle...</p>
+        </div>
+      </div>
+    );
+  }
 
   // Remaining useful life & priority calculations
   const remainingLife = selectedVehicle.expectedLifeYears - selectedVehicle.ageYears;
@@ -454,7 +568,7 @@ export default function FleetLifecycle() {
                 </div>
                 <div className="flex justify-between border-b border-gray-100 pb-2">
                   <span className="text-text-secondary font-semibold">Procurement Cost</span>
-                  <span className="font-bold text-text-primary">${selectedVehicle.purchaseCost.toLocaleString()}</span>
+                  <span className="font-bold text-text-primary">${selectedVehicle.purchaseCost.toLocaleString("en-US")}</span>
                 </div>
                 <div className="flex justify-between border-b border-gray-100 pb-2">
                   <span className="text-text-secondary font-semibold">Assigned Driver</span>
@@ -513,7 +627,7 @@ export default function FleetLifecycle() {
                   <span className="text-text-secondary font-semibold">Odometer Telemetry</span>
                   <div className="flex items-center gap-1">
                     <Gauge size={13} className="text-text-muted" />
-                    <span className="font-bold text-text-primary">{selectedVehicle.distanceKm.toLocaleString()} KM</span>
+                    <span className="font-bold text-text-primary">{selectedVehicle.distanceKm.toLocaleString("en-US")} KM</span>
                   </div>
                 </div>
 
@@ -544,11 +658,11 @@ export default function FleetLifecycle() {
               <div className="space-y-3.5 text-xs">
                 <div className="flex justify-between items-center">
                   <span className="text-text-secondary font-semibold">Fuel Cost MTD</span>
-                  <span className="font-bold text-text-primary">${selectedVehicle.fuelCostMtd.toLocaleString()}</span>
+                  <span className="font-bold text-text-primary">${selectedVehicle.fuelCostMtd.toLocaleString("en-US")}</span>
                 </div>
                 <div className="flex justify-between items-center">
                   <span className="text-text-secondary font-semibold">Maintenance Cost MTD</span>
-                  <span className="font-bold text-text-primary">${selectedVehicle.maintenanceCostMtd.toLocaleString()}</span>
+                  <span className="font-bold text-text-primary">${selectedVehicle.maintenanceCostMtd.toLocaleString("en-US")}</span>
                 </div>
                 
                 {/* Total Cost of Ownership */}
@@ -556,7 +670,7 @@ export default function FleetLifecycle() {
                   <div className="flex justify-between items-center">
                     <span className="text-[10px] font-bold text-text-secondary uppercase">Total Cost of Ownership</span>
                     <span className="text-sm font-extrabold text-secondary">
-                      ${(selectedVehicle.purchaseCost + selectedVehicle.maintenanceCostMtd + (selectedVehicle.fuelCostMtd * 12)).toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                      ${(selectedVehicle.purchaseCost + selectedVehicle.maintenanceCostMtd + (selectedVehicle.fuelCostMtd * 12)).toLocaleString("en-US", { maximumFractionDigits: 0 })}
                     </span>
                   </div>
                   <p className="text-[9px] text-text-secondary leading-normal">
@@ -584,7 +698,7 @@ export default function FleetLifecycle() {
                 <div className="flex justify-between items-center">
                   <span className="text-text-secondary font-semibold">Estimated Resale Value</span>
                   <span className="font-extrabold text-success">
-                    ${resaleValueEstimate.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                    ${resaleValueEstimate.toLocaleString("en-US", { maximumFractionDigits: 0 })}
                   </span>
                 </div>
 
@@ -626,7 +740,7 @@ export default function FleetLifecycle() {
                   Retirement Recommendation
                 </span>
                 <p className="text-[10px] text-text-secondary leading-normal">
-                  Tesla Semi (V-1102) has high maintenance costs MTD (${selectedVehicle.maintenanceCostMtd.toLocaleString()}) which exceeds expected residual amortization levels. Retiring this asset soon is highly recommended.
+                  Tesla Semi (V-1102) has high maintenance costs MTD (${selectedVehicle.maintenanceCostMtd.toLocaleString("en-US")}) which exceeds expected residual amortization levels. Retiring this asset soon is highly recommended.
                 </p>
               </div>
 

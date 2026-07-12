@@ -37,7 +37,7 @@ export const vehicleAssignmentService = {
   async getDrivers(): Promise<Driver[]> {
     try {
       const response = await apiClient.get<PaginatedResponse<ApiDriver>>("/drivers", {
-        params: { limit: 100 }
+        params: { limit: 100, status: "ACTIVE" }
       });
       return response.data.map((d) => ({
         id: d.id,

@@ -1,5 +1,7 @@
 "use client";
 
+import { apiClient } from "../../lib/core/services/api-client";
+
 // TypeScript types for the finance data structure
 export interface FinancialKPIs {
   revenue: number;
@@ -204,6 +206,18 @@ export function saveFinanceData(data: {
   }
 }
 
+function getCurrentUserId(): string {
+  if (typeof window === "undefined") return "c0000000-0000-0000-0000-000000000001";
+  try {
+    const token = localStorage.getItem("token");
+    if (!token) return "c0000000-0000-0000-0000-000000000001";
+    const payload = JSON.parse(atob(token.split(".")[1]));
+    return payload.sub || payload.id || "c0000000-0000-0000-0000-000000000001";
+  } catch {
+    return "c0000000-0000-0000-0000-000000000001";
+  }
+}
+
 // Function to add a new expense record and recalculate relevant numbers dynamically
 export function addExpense(record: Omit<ExpenseRecord, "id" | "status">) {
   const { kpis, monthlyTrends, expenses, budgets } = loadFinanceData();
@@ -260,6 +274,19 @@ export function addExpense(record: Omit<ExpenseRecord, "id" | "status">) {
     monthlyTrends: updatedTrends
   });
 
+  // Post to backend database in background
+  apiClient.post("/expenses", {
+    amount: record.amount,
+    category: record.category.toUpperCase(),
+    description: record.description,
+    loggedById: getCurrentUserId(),
+    expenseDate: new Date(record.expenseDate).toISOString()
+  }).then(() => {
+    syncFinanceDataWithBackend();
+  }).catch((err) => {
+    console.warn("Backend add expense failed, using local ledger fallback:", err);
+  });
+
   // Trigger a custom event to notify other components of state changes
   if (typeof window !== "undefined") {
     window.dispatchEvent(new Event("finance_data_update"));
@@ -281,4 +308,96 @@ export function resetFinanceData() {
   localStorage.removeItem("transit_ops_insights");
 
   window.dispatchEvent(new Event("finance_data_update"));
+}
+
+let isSyncing = false;
+
+export async function syncFinanceDataWithBackend() {
+  if (isSyncing) return;
+  isSyncing = true;
+  try {
+    const [expensesResponse, fuelResponse] = await Promise.all([
+      apiClient.get<any>("/expenses?limit=100"),
+      apiClient.get<any>("/fuel?limit=100")
+    ]);
+
+    const { kpis, monthlyTrends, budgets, insights } = loadFinanceData();
+
+    let updatedExpenses = DEFAULT_EXPENSES;
+    if (expensesResponse && expensesResponse.data && expensesResponse.data.length > 0) {
+      updatedExpenses = expensesResponse.data.map((exp: any) => {
+        let category: ExpenseRecord["category"] = "Miscellaneous";
+        if (exp.category === "FUEL") category = "Fuel";
+        if (exp.category === "MAINTENANCE") category = "Maintenance";
+        if (exp.category === "TOLL") category = "Toll";
+        if (exp.category === "INSURANCE") category = "Insurance";
+        if (exp.category === "REPAIRS") category = "Repairs";
+
+        return {
+          id: exp.id,
+          amount: Number(exp.amount),
+          category,
+          description: exp.description,
+          vehicleNumber: exp.vehicle?.registrationNumber || undefined,
+          tripNumber: exp.trip?.tripNumber || undefined,
+          expenseDate: exp.expenseDate ? exp.expenseDate.split("T")[0] : new Date().toISOString().split("T")[0],
+          status: exp.status === "APPROVED" ? "Approved" : exp.status === "REJECTED" ? "Rejected" : "Pending"
+        };
+      });
+    }
+
+    const backendExpensesTotal = updatedExpenses.reduce((sum, e) => sum + e.amount, 0);
+    const updatedKpis = {
+      ...kpis,
+      expenses: backendExpensesTotal || kpis.expenses,
+      netProfit: kpis.revenue - (backendExpensesTotal || kpis.expenses)
+    };
+    updatedKpis.profitMargin = parseFloat(((updatedKpis.netProfit / updatedKpis.revenue) * 100).toFixed(1));
+
+    const categoryTotals: Record<string, number> = {};
+    updatedExpenses.forEach(e => {
+      const cat = e.category;
+      categoryTotals[cat] = (categoryTotals[cat] || 0) + e.amount;
+    });
+
+    const updatedBudgets = budgets.map((b: BudgetRecord) => {
+      const match = Object.keys(categoryTotals).find(k => k.toLowerCase() === b.category.toLowerCase());
+      return {
+        ...b,
+        actual: match ? categoryTotals[match] : b.actual
+      };
+    });
+
+    let updatedFuelEfficiencies = DEFAULT_FUEL_EFFICIENCIES;
+    if (fuelResponse && fuelResponse.data && fuelResponse.data.length > 0) {
+      updatedFuelEfficiencies = fuelResponse.data.map((log: any) => {
+        const dist = log.trip ? (log.odometer - (log.trip.odometerAtStart || 0)) : 150;
+        return {
+          vehicleNumber: log.vehicle?.registrationNumber || "MH-12-JK-8821",
+          model: `${log.vehicle?.make || ''} ${log.vehicle?.model || ''}`,
+          fuelType: log.vehicle?.fuelType === "ELECTRIC" ? "Electric" : "Diesel",
+          totalDistanceKm: dist,
+          totalFuelLitersOrKwh: Number(log.quantity),
+          totalCost: Number(log.cost),
+          costPerKm: dist > 0 ? parseFloat((Number(log.cost) / dist).toFixed(2)) : 0,
+          efficiency: log.vehicle?.fuelType === "ELECTRIC" ? "1.15 kWh/km" : "30.0 L/100km"
+        };
+      });
+    }
+
+    saveFinanceData({
+      kpis: updatedKpis,
+      expenses: updatedExpenses,
+      budgets: updatedBudgets,
+      fuelEfficiencies: updatedFuelEfficiencies
+    });
+
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(new Event("finance_data_update"));
+    }
+  } catch (error) {
+    console.warn("Backend sync failed or offline, keeping local mock state:", error);
+  } finally {
+    isSyncing = false;
+  }
 }

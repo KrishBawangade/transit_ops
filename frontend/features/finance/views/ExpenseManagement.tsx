@@ -18,7 +18,7 @@ import {
   RefreshCw,
   Eye
 } from "lucide-react";
-import { loadFinanceData, saveFinanceData, addExpense, ExpenseRecord, BudgetRecord, MonthlyTrend } from "../mockData";
+import { loadFinanceData, saveFinanceData, addExpense, ExpenseRecord, BudgetRecord, MonthlyTrend, syncFinanceDataWithBackend } from "../mockData";
 
 export default function ExpenseManagement() {
   const [financeData, setFinanceData] = useState<ReturnType<typeof loadFinanceData> | null>(null);
@@ -45,6 +45,7 @@ export default function ExpenseManagement() {
 
   useEffect(() => {
     setFinanceData(loadFinanceData());
+    syncFinanceDataWithBackend();
     const handleUpdate = () => {
       setFinanceData(loadFinanceData());
     };

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import { 
   FileText, 
   Download, 
@@ -30,6 +30,8 @@ import {
   BarChart4
 } from "lucide-react";
 import Link from "next/link";
+import { reportService, FleetReportData } from "@/features/reports/services/report.service";
+import { apiClient } from "@/lib/core/services/api-client";
 
 // Mock Data Definitions
 interface VehiclePerformance {
@@ -74,8 +76,45 @@ export default function FleetReport() {
   const [startDate, setStartDate] = useState("2026-06-12");
   const [endDate, setEndDate] = useState("2026-07-12");
 
-  // 2. Simulated Dynamic Metrics based on date selection
-  const metricsModifier = useMemo(() => {
+  // Backend state
+  const [reportData, setReportData] = useState<FleetReportData | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+
+  const getParams = () => {
+    const end = new Date();
+    let start = new Date();
+    if (dateRange === "7days") {
+      start = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+    } else if (dateRange === "quarter") {
+      start = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000);
+    } else if (dateRange === "custom") {
+      return { startDate, endDate };
+    } else { // 30days
+      start = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+    }
+    return {
+      startDate: start.toISOString().split("T")[0],
+      endDate: end.toISOString().split("T")[0],
+    };
+  };
+
+  useEffect(() => {
+    const fetchReport = async () => {
+      setIsLoading(true);
+      try {
+        const data = await reportService.getFleetReport(getParams());
+        setReportData(data);
+      } catch (err: any) {
+        console.warn("Failed to fetch backend fleet report, using simulated data fallback:", err);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchReport();
+  }, [dateRange, startDate, endDate]);
+
+  // 2. Dynamic Metrics based on date selection
+  const baseMockMetrics = useMemo(() => {
     switch (dateRange) {
       case "7days":
         return { distance: 10450, spend: 3250, trips: 36, utilization: 81.2, fuel: 1980 };
@@ -89,30 +128,58 @@ export default function FleetReport() {
     }
   }, [dateRange]);
 
-  // 3. Mock Data Lists
-  const vehiclePerformanceList: VehiclePerformance[] = [
-    { id: "V-8821", model: "Volvo FH16 (Diesel)", driver: "Alex Rivera", status: "Active", distanceCovered: 4210, fuelEfficiency: "28.5 L/100km", healthScore: 92 },
-    { id: "V-2210", model: "Peterbilt 579 (Diesel)", driver: "Dave Miller", status: "Active", distanceCovered: 3890, fuelEfficiency: "30.2 L/100km", healthScore: 88 },
-    { id: "V-1102", model: "Tesla Semi Gen 1 (EV)", driver: "Elena Rostova", status: "Maintenance", distanceCovered: 2450, fuelEfficiency: "1.15 kWh/km", healthScore: 64 },
-    { id: "V-5582", model: "Mack Anthem (Diesel)", driver: "Marcus Vance", status: "Active", distanceCovered: 5120, fuelEfficiency: "27.8 L/100km", healthScore: 95 },
-    { id: "V-7710", model: "Scania R500 (Hybrid)", driver: "Sarah Jenkins", status: "Idle", distanceCovered: 1820, fuelEfficiency: "24.1 L/100km", healthScore: 91 },
-    { id: "V-4412", model: "Kenworth T680 (Diesel)", driver: "Jameson Blake", status: "Offline", distanceCovered: 0, fuelEfficiency: "N/A", healthScore: 78 }
-  ];
+  const metricsModifier = useMemo(() => {
+    if (reportData && reportData.summary) {
+      return {
+        distance: reportData.summary.distanceTraveled,
+        spend: reportData.summary.totalSpend,
+        trips: reportData.summary.tripsCompleted,
+        utilization: reportData.summary.utilizationRate,
+        fuel: reportData.summary.fuelCost || reportData.summary.fuelQuantity
+      };
+    }
+    return baseMockMetrics;
+  }, [reportData, baseMockMetrics]);
 
-  const driverSafetyList: DriverSafetyReport[] = [
-    { name: "Alex Rivera", tripsCompleted: 34, distanceDriven: 4210, safetyScore: 96, violations: 0 },
-    { name: "Elena Rostova", tripsCompleted: 22, distanceDriven: 2450, safetyScore: 94, violations: 1 },
-    { name: "Marcus Vance", tripsCompleted: 38, distanceDriven: 5120, safetyScore: 89, violations: 3 },
-    { name: "Sarah Jenkins", tripsCompleted: 15, distanceDriven: 1820, safetyScore: 98, violations: 0 },
-    { name: "Dave Miller", tripsCompleted: 31, distanceDriven: 3890, safetyScore: 91, violations: 1 }
-  ];
+  // 3. Data Lists
+  const vehiclePerformanceList = useMemo((): VehiclePerformance[] => {
+    if (reportData && reportData.vehiclePerformance && reportData.vehiclePerformance.length > 0) {
+      return reportData.vehiclePerformance as any[];
+    }
+    return [
+      { id: "V-8821", model: "Volvo FH16 (Diesel)", driver: "Alex Rivera", status: "Active", distanceCovered: 4210, fuelEfficiency: "28.5 L/100km", healthScore: 92 },
+      { id: "V-2210", model: "Peterbilt 579 (Diesel)", driver: "Dave Miller", status: "Active", distanceCovered: 3890, fuelEfficiency: "30.2 L/100km", healthScore: 88 },
+      { id: "V-1102", model: "Tesla Semi Gen 1 (EV)", driver: "Elena Rostova", status: "Maintenance", distanceCovered: 2450, fuelEfficiency: "1.15 kWh/km", healthScore: 64 },
+      { id: "V-5582", model: "Mack Anthem (Diesel)", driver: "Marcus Vance", status: "Active", distanceCovered: 5120, fuelEfficiency: "27.8 L/100km", healthScore: 95 },
+      { id: "V-7710", model: "Scania R500 (Hybrid)", driver: "Sarah Jenkins", status: "Idle", distanceCovered: 1820, fuelEfficiency: "24.1 L/100km", healthScore: 91 },
+      { id: "V-4412", model: "Kenworth T680 (Diesel)", driver: "Jameson Blake", status: "Offline", distanceCovered: 0, fuelEfficiency: "N/A", healthScore: 78 }
+    ];
+  }, [reportData]);
 
-  const maintenanceHistoryList: MaintenanceHistoryItem[] = [
-    { id: "WO-3020", vehicleId: "V-7710", issue: "Compressor failure replacement", cost: 620, completedDate: "2026-07-08", type: "Unscheduled" },
-    { id: "WO-3018", vehicleId: "V-8821", issue: "Standard 50k Odometer Lube & Oil Swap", cost: 350, completedDate: "2026-07-05", type: "Scheduled" },
-    { id: "WO-3015", vehicleId: "V-5582", vehicleName: "Mack Anthem", issue: "Air braking hose line diagnostic check", cost: 180, completedDate: "2026-07-02", type: "Scheduled" } as any,
-    { id: "WO-3010", vehicleId: "V-2210", issue: "Transmission shift solenoid overhaul", cost: 1450, completedDate: "2026-06-25", type: "Unscheduled" }
-  ];
+  const driverSafetyList = useMemo((): DriverSafetyReport[] => {
+    if (reportData && reportData.driverSafety && reportData.driverSafety.length > 0) {
+      return reportData.driverSafety;
+    }
+    return [
+      { name: "Alex Rivera", tripsCompleted: 34, distanceDriven: 4210, safetyScore: 96, violations: 0 },
+      { name: "Elena Rostova", tripsCompleted: 22, distanceDriven: 2450, safetyScore: 94, violations: 1 },
+      { name: "Marcus Vance", tripsCompleted: 38, distanceDriven: 5120, safetyScore: 89, violations: 3 },
+      { name: "Sarah Jenkins", tripsCompleted: 15, distanceDriven: 1820, safetyScore: 98, violations: 0 },
+      { name: "Dave Miller", tripsCompleted: 31, distanceDriven: 3890, safetyScore: 91, violations: 1 }
+    ];
+  }, [reportData]);
+
+  const maintenanceHistoryList = useMemo((): MaintenanceHistoryItem[] => {
+    if (reportData && reportData.maintenanceHistory && reportData.maintenanceHistory.length > 0) {
+      return reportData.maintenanceHistory as any[];
+    }
+    return [
+      { id: "WO-3020", vehicleId: "V-7710", issue: "Compressor failure replacement", cost: 620, completedDate: "2026-07-08", type: "Unscheduled" },
+      { id: "WO-3018", vehicleId: "V-8821", issue: "Standard 50k Odometer Lube & Oil Swap", cost: 350, completedDate: "2026-07-05", type: "Scheduled" },
+      { id: "WO-3015", vehicleId: "V-5582", issue: "Air braking hose line diagnostic check", cost: 180, completedDate: "2026-07-02", type: "Scheduled" },
+      { id: "WO-3010", vehicleId: "V-2210", issue: "Transmission shift solenoid overhaul", cost: 1450, completedDate: "2026-06-25", type: "Unscheduled" }
+    ];
+  }, [reportData]);
 
   // 4. Filters & Searches logic for Vehicle Performance
   const filteredVehicles = useMemo(() => {
@@ -124,7 +191,7 @@ export default function FleetReport() {
       const matchesStatus = statusFilter === "All" || v.status === statusFilter;
       return matchesSearch && matchesStatus;
     });
-  }, [vehicleSearch, statusFilter]);
+  }, [vehiclePerformanceList, vehicleSearch, statusFilter]);
 
   // 5. Trigger Exports
   const handleExport = (type: "pdf" | "excel") => {
@@ -305,7 +372,7 @@ export default function FleetReport() {
           <div>
             <span className="text-[10px] font-bold text-text-secondary uppercase tracking-wider block">Distance Total</span>
             <span className="text-3xl font-extrabold text-text-primary mt-1.5 block">
-              {metricsModifier.distance.toLocaleString()} km
+              {metricsModifier.distance.toLocaleString("en-US")} km
             </span>
           </div>
           <span className="text-[10px] text-text-muted mt-4 block">All logged dispatches</span>
@@ -396,7 +463,7 @@ export default function FleetReport() {
                         </span>
                       </td>
                       <td className="px-5 py-4 font-bold text-text-primary">
-                        {vehicle.distanceCovered.toLocaleString()}
+                        {vehicle.distanceCovered.toLocaleString("en-US")}
                       </td>
                       <td className="px-5 py-4 text-text-secondary font-semibold">{vehicle.fuelEfficiency}</td>
                       <td className="px-5 py-4 text-right">
@@ -521,11 +588,11 @@ export default function FleetReport() {
             <div className="space-y-3.5 text-xs">
               <div className="flex justify-between items-center bg-gray-50 p-3 rounded border border-border-app">
                 <span className="text-text-secondary font-semibold">Total Consumed</span>
-                <span className="font-extrabold text-text-primary">{metricsModifier.fuel.toLocaleString()} Litres</span>
+                <span className="font-extrabold text-text-primary">{metricsModifier.fuel.toLocaleString("en-US")} Litres</span>
               </div>
               <div className="flex justify-between items-center bg-gray-50 p-3 rounded border border-border-app">
                 <span className="text-text-secondary font-semibold">Total Cost</span>
-                <span className="font-extrabold text-secondary">${(metricsModifier.fuel * 1.45).toLocaleString(undefined, { maximumFractionDigits: 0 })}</span>
+                <span className="font-extrabold text-secondary">${(metricsModifier.fuel * 1.45).toLocaleString("en-US", { maximumFractionDigits: 0 })}</span>
               </div>
               <div className="flex justify-between items-center bg-gray-50 p-3 rounded border border-border-app">
                 <span className="text-text-secondary font-semibold">Average Fleet Efficiency</span>
@@ -615,13 +682,13 @@ export default function FleetReport() {
               <div>
                 <span className="text-[9px] font-bold text-text-secondary uppercase">Active Bay Cost</span>
                 <span className="block text-base font-extrabold text-text-primary mt-0.5">
-                  ${(metricsModifier.spend * 0.65).toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                  ${(metricsModifier.spend * 0.65).toLocaleString("en-US", { maximumFractionDigits: 0 })}
                 </span>
               </div>
               <div className="border-l border-gray-200">
                 <span className="text-[9px] font-bold text-text-secondary uppercase">Scheduled Checks</span>
                 <span className="block text-base font-extrabold text-success mt-0.5">
-                  ${(metricsModifier.spend * 0.35).toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                  ${(metricsModifier.spend * 0.35).toLocaleString("en-US", { maximumFractionDigits: 0 })}
                 </span>
               </div>
             </div>

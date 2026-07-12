@@ -20,7 +20,7 @@ import {
   RefreshCw
 } from "lucide-react";
 import Link from "next/link";
-import { loadFinanceData, resetFinanceData, ExpenseRecord, MonthlyTrend, BudgetRecord } from "../mockData";
+import { loadFinanceData, resetFinanceData, ExpenseRecord, MonthlyTrend, BudgetRecord, syncFinanceDataWithBackend } from "../mockData";
 
 export default function FinancialDashboard() {
   const [financeData, setFinanceData] = useState<ReturnType<typeof loadFinanceData> | null>(null);
@@ -30,14 +30,15 @@ export default function FinancialDashboard() {
   // Load data from localStorage (or fallback to defaults)
   const refreshData = () => {
     setIsRefreshing(true);
-    setTimeout(() => {
+    syncFinanceDataWithBackend().then(() => {
       setFinanceData(loadFinanceData());
       setIsRefreshing(false);
-    }, 400);
+    });
   };
 
   useEffect(() => {
     setFinanceData(loadFinanceData());
+    syncFinanceDataWithBackend();
 
     // Listen for global data updates
     const handleUpdate = () => {

@@ -55,7 +55,24 @@ class ApiClient {
       return {} as T;
     }
 
-    return response.json();
+    const json = await response.json();
+
+    // Check if the response follows the standard backend envelope { status, data, pagination }
+    if (json && typeof json === "object" && json.status === "success") {
+      if ("pagination" in json && json.pagination) {
+        return {
+          data: json.data,
+          total: json.pagination.total,
+          page: json.pagination.page,
+          limit: json.pagination.limit,
+        } as unknown as T;
+      }
+      if ("data" in json) {
+        return json.data as T;
+      }
+    }
+
+    return json as T;
   }
 
   async get<T>(path: string, options?: RequestOptions): Promise<T> {

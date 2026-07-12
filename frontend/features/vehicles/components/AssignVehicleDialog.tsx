@@ -1,19 +1,25 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from "react";
-import { X, Check } from "lucide-react";
-import { Vehicle, Driver } from "../types";
-import { vehicleService } from "../services/vehicle.service";
+import React, { useState, useEffect, useRef, useMemo } from "react";
+import { X, Check, RefreshCw } from "lucide-react";
+import { Vehicle, Driver, VehicleAssignment } from "../types";
 import { vehicleAssignmentService } from "../services/vehicleAssignment.service";
 
 interface AssignVehicleDialogProps {
   isOpen: boolean;
   onClose: () => void;
   onSave: () => void;
+  allVehicles: Vehicle[];
+  allAssignments: VehicleAssignment[];
 }
 
-export function AssignVehicleDialog({ isOpen, onClose, onSave }: AssignVehicleDialogProps) {
-  const [vehicles, setVehicles] = useState<Vehicle[]>([]);
+export function AssignVehicleDialog({ 
+  isOpen, 
+  onClose, 
+  onSave, 
+  allVehicles, 
+  allAssignments 
+}: AssignVehicleDialogProps) {
   const [drivers, setDrivers] = useState<Driver[]>([]);
   const [selectedVehicleId, setSelectedVehicleId] = useState("");
   const [selectedDriverId, setSelectedDriverId] = useState("");
@@ -26,6 +32,21 @@ export function AssignVehicleDialog({ isOpen, onClose, onSave }: AssignVehicleDi
 
   const dialogCancelBtnRef = useRef<HTMLButtonElement>(null);
 
+  // Compute available vehicles reactively
+  const vehicles = useMemo(() => {
+    if (!isOpen) return [];
+    const assignedIds = new Set(
+      allAssignments
+        .filter((a) => a.status === "Assigned")
+        .map((a) => a.vehicleId)
+    );
+    
+    return allVehicles.filter(
+      (v) => v.status !== "Retired" && !assignedIds.has(v.id)
+    );
+  }, [isOpen, allVehicles, allAssignments]);
+
+  // Reset form selections on open
   useEffect(() => {
     if (isOpen) {
       setAssignmentDate(new Date().toISOString().split("T")[0]);
@@ -33,29 +54,29 @@ export function AssignVehicleDialog({ isOpen, onClose, onSave }: AssignVehicleDi
       setSelectedDriverId("");
       setRemarks("");
       setError("");
+    }
+  }, [isOpen]);
 
+  // Fetch and filter active/unassigned drivers in background on open
+  useEffect(() => {
+    if (isOpen) {
       setIsLoading(true);
-      Promise.all([
-        vehicleService.getVehicles(),
-        vehicleAssignmentService.getAssignments(),
-        vehicleAssignmentService.getDrivers()
-      ])
-        .then(([allVehicles, assignments, allDrivers]) => {
-          const assignedIds = new Set(
-            assignments
+      vehicleAssignmentService.getDrivers()
+        .then((allDrivers) => {
+          const assignedDriverIds = new Set(
+            allAssignments
               .filter((a) => a.status === "Assigned")
-              .map((a) => a.vehicleId)
+              .map((a) => a.driverId)
           );
           
-          const available = allVehicles.filter(
-            (v) => v.status !== "Retired" && !assignedIds.has(v.id)
+          const availableDrivers = allDrivers.filter(
+            (d) => !assignedDriverIds.has(d.id)
           );
 
-          setVehicles(available);
-          setDrivers(allDrivers);
+          setDrivers(availableDrivers);
         })
-        .catch((err) => {
-          setError(err.message || "Failed to load vehicle list.");
+        .catch((err: any) => {
+          setError(err.message || "Failed to load active drivers.");
         })
         .finally(() => {
           setIsLoading(false);
@@ -73,13 +94,13 @@ export function AssignVehicleDialog({ isOpen, onClose, onSave }: AssignVehicleDi
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
+      if (e.key === "Escape" && !isSaving && !isLoading) {
         onClose();
       }
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [onClose]);
+  }, [onClose, isSaving, isLoading]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -119,7 +140,14 @@ export function AssignVehicleDialog({ isOpen, onClose, onSave }: AssignVehicleDi
 
   return (
     <div role="dialog" aria-modal="true" className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div className="fixed inset-0 bg-black/40 backdrop-blur-sm animate-fadeIn" onClick={onClose} />
+      <div 
+        className="fixed inset-0 bg-black/40 backdrop-blur-sm animate-fadeIn" 
+        onClick={() => {
+          if (!isSaving && !isLoading) {
+            onClose();
+          }
+        }} 
+      />
       <form
         onSubmit={handleSubmit}
         className="bg-surface-app border border-border-app rounded-m shadow-dialog max-w-md w-full p-6 relative z-10 animate-fadeIn space-y-4"
@@ -133,8 +161,13 @@ export function AssignVehicleDialog({ isOpen, onClose, onSave }: AssignVehicleDi
           </div>
           <button
             type="button"
-            onClick={onClose}
-            className="text-text-muted hover:text-text-primary rounded focus:outline-none focus:ring-2 focus:ring-primary/20 cursor-pointer"
+            onClick={() => {
+              if (!isSaving && !isLoading) {
+                onClose();
+              }
+            }}
+            disabled={isSaving || isLoading}
+            className="text-text-muted hover:text-text-primary rounded focus:outline-none focus:ring-2 focus:ring-primary/20 cursor-pointer disabled:opacity-50"
           >
             <X size={18} />
           </button>
@@ -147,9 +180,9 @@ export function AssignVehicleDialog({ isOpen, onClose, onSave }: AssignVehicleDi
         )}
 
         {isLoading ? (
-          <div className="space-y-4 py-4 select-none">
-            <div className="h-9 bg-gray-100 rounded animate-pulse"></div>
-            <div className="h-9 bg-gray-100 rounded animate-pulse"></div>
+          <div className="space-y-4 py-8 flex flex-col items-center justify-center select-none text-xs text-text-secondary">
+            <RefreshCw className="h-6 w-6 animate-spin text-primary" />
+            <span>Loading active drivers ledger...</span>
           </div>
         ) : (
           <div className="space-y-3">
@@ -159,12 +192,13 @@ export function AssignVehicleDialog({ isOpen, onClose, onSave }: AssignVehicleDi
                 value={selectedVehicleId}
                 onChange={(e) => setSelectedVehicleId(e.target.value)}
                 required
-                className="w-full h-9 px-3 rounded-m border border-border-app text-xs text-text-primary bg-gray-50 focus:bg-surface-app focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary cursor-pointer"
+                disabled={isSaving}
+                className="w-full h-9 px-3 rounded-m border border-border-app text-xs text-text-primary bg-gray-50 focus:bg-surface-app focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary cursor-pointer disabled:opacity-50"
               >
                 <option value="">-- Select Available Vehicle --</option>
                 {vehicles.map((v) => (
                   <option key={v.id} value={v.id}>
-                    {v.name || `${v.manufacturer} ${v.model}`} ({v.registrationNumber})
+                    {v.name} ({v.registrationNumber})
                   </option>
                 ))}
               </select>
@@ -179,14 +213,21 @@ export function AssignVehicleDialog({ isOpen, onClose, onSave }: AssignVehicleDi
                 value={selectedDriverId}
                 onChange={(e) => setSelectedDriverId(e.target.value)}
                 required
-                className="w-full h-9 px-3 rounded-m border border-border-app text-xs text-text-primary bg-gray-50 focus:bg-surface-app focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary cursor-pointer"
+                disabled={isSaving || drivers.length === 0}
+                className="w-full h-9 px-3 rounded-m border border-border-app text-xs text-text-primary bg-gray-50 focus:bg-surface-app focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary cursor-pointer disabled:opacity-50"
               >
-                <option value="">-- Select Commercial Driver --</option>
-                {drivers.map((d) => (
-                  <option key={d.id} value={d.id}>
-                    {d.name}
-                  </option>
-                ))}
+                {drivers.length === 0 ? (
+                  <option value="">No active, unassigned drivers available</option>
+                ) : (
+                  <>
+                    <option value="">-- Select Commercial Driver --</option>
+                    {drivers.map((d) => (
+                      <option key={d.id} value={d.id}>
+                        {d.name}
+                      </option>
+                    ))}
+                  </>
+                )}
               </select>
             </div>
 
@@ -197,7 +238,8 @@ export function AssignVehicleDialog({ isOpen, onClose, onSave }: AssignVehicleDi
                 value={assignmentDate}
                 onChange={(e) => setAssignmentDate(e.target.value)}
                 required
-                className="w-full h-9 px-3 rounded-m border border-border-app text-xs text-text-primary bg-gray-50 focus:bg-surface-app focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                disabled={isSaving}
+                className="w-full h-9 px-3 rounded-m border border-border-app text-xs text-text-primary bg-gray-50 focus:bg-surface-app focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary disabled:opacity-50"
               />
             </div>
 
@@ -207,7 +249,8 @@ export function AssignVehicleDialog({ isOpen, onClose, onSave }: AssignVehicleDi
                 value={remarks}
                 onChange={(e) => setRemarks(e.target.value)}
                 placeholder="Log shift instructions, route restrictions..."
-                className="w-full p-3 rounded-m border border-border-app text-xs text-text-primary placeholder:text-text-muted bg-gray-50 focus:bg-surface-app focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary min-h-[70px] font-sans"
+                disabled={isSaving}
+                className="w-full p-3 rounded-m border border-border-app text-xs text-text-primary placeholder:text-text-muted bg-gray-50 focus:bg-surface-app focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary min-h-[70px] font-sans disabled:opacity-50"
               />
             </div>
           </div>
@@ -218,18 +261,27 @@ export function AssignVehicleDialog({ isOpen, onClose, onSave }: AssignVehicleDi
             type="button"
             ref={dialogCancelBtnRef}
             onClick={onClose}
-            disabled={isSaving}
+            disabled={isSaving || isLoading}
             className="px-4 h-9 border border-border-app rounded-m text-text-secondary hover:text-text-primary hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all disabled:opacity-50 cursor-pointer"
           >
             Cancel
           </button>
           <button
             type="submit"
-            disabled={isSaving || vehicles.length === 0}
+            disabled={isSaving || isLoading || vehicles.length === 0 || drivers.length === 0}
             className="px-4.5 h-9 bg-primary text-text-on-primary rounded-m hover:bg-primary/95 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all shadow-small disabled:opacity-50 flex items-center gap-1.5 cursor-pointer"
           >
-            <Check size={14} />
-            <span>{isSaving ? "Saving..." : "Save"}</span>
+            {isSaving ? (
+              <>
+                <RefreshCw className="h-3.5 w-3.5 animate-spin" />
+                <span>Saving...</span>
+              </>
+            ) : (
+              <>
+                <Check size={14} />
+                <span>Save</span>
+              </>
+            )}
           </button>
         </div>
       </form>
