@@ -70,7 +70,6 @@ export function Sidebar({ isOpen, setIsOpen, isMobile = false }: SidebarProps) {
     { href: "/vehicles", label: "Vehicles", icon: Truck, badge: "12" },
     { href: "/vehicles/assignments", label: "Assignments", icon: ClipboardList },
     { href: "/drivers", label: "Drivers", icon: Users, badge: "8" },
-    { href: "/trips", label: "Trips", icon: Route },
     { href: "/settings", label: "Settings", icon: Settings },
   ];
 
