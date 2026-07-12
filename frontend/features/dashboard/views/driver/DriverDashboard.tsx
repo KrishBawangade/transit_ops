@@ -20,7 +20,8 @@ import {
   Star,
   TrendingUp,
   AlertTriangle,
-  MapPin
+  MapPin,
+  Truck
 } from "lucide-react";
 
 export default function DriverDashboard() {
@@ -29,6 +30,12 @@ export default function DriverDashboard() {
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const [time, setTime] = useState<string>("");
   const [dateStr, setDateStr] = useState<string>("");
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+
+  const triggerToast = (msg: string) => {
+    setToastMessage(msg);
+    setTimeout(() => setToastMessage(null), 4500);
+  };
 
   // Notifications Mock Data
   const [notifications, setNotifications] = useState([
@@ -57,6 +64,17 @@ export default function DriverDashboard() {
 
   return (
     <div className="space-y-8 max-w-7xl mx-auto px-6 py-6 animate-fadeIn">
+      
+      {/* Floating Success Toast */}
+      {toastMessage && (
+        <div className="fixed top-4 right-4 z-50 flex items-center gap-2 bg-gray-900 border border-gray-800 text-text-on-primary text-xs px-4 py-3 rounded-m shadow-dialog animate-fadeIn transition-all duration-300">
+          <CheckCircle2 size={16} className="text-success shrink-0" />
+          <span className="font-semibold">{toastMessage}</span>
+          <button onClick={() => setToastMessage(null)} className="ml-2 hover:bg-gray-800 rounded p-0.5 text-text-muted hover:text-text-on-primary">
+            <X size={14} />
+          </button>
+        </div>
+      )}
       
       {/* 1. Header Section */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-5 border-b border-border-app pb-6">
@@ -345,6 +363,175 @@ export default function DriverDashboard() {
               <TrendingUp size={12} /> +0.04
             </span>
           </div>
+        </div>
+      </div>
+
+      {/* 3. Current Trip Featured Section */}
+      <div className="bg-surface-app border border-border-app p-6 rounded-m shadow-card space-y-6 hover:border-primary/15 transition-all">
+        
+        {/* Header: Title, Live Status Indicator */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border-app pb-4">
+          <div className="space-y-1">
+            <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 bg-primary-light text-primary rounded border border-primary/10">
+              Active Dispatch Cargo
+            </span>
+            <div className="flex items-center gap-2 mt-1">
+              <h2 className="text-xl font-bold text-text-primary">Current Assigned Route</h2>
+              <span className="text-xs font-mono font-bold text-primary bg-primary-light border border-primary/20 px-2 py-0.5 rounded">
+                TRP-9482
+              </span>
+            </div>
+          </div>
+
+          {/* GPS Live Locator & Status badges */}
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-1.5 text-xs text-success bg-success-light/20 px-2.5 py-1 rounded-circular border border-success/15 font-semibold">
+              <span className="h-2 w-2 bg-success rounded-circular inline-block animate-ping"></span>
+              <span>GPS Tracking Active</span>
+            </div>
+            <div className="flex items-center gap-1.5 text-xs text-success bg-success-light/20 px-2.5 py-1 rounded-circular border border-success/15 font-bold">
+              <span>On Time</span>
+            </div>
+          </div>
+        </div>
+
+        {/* 3 Column Grid: Trip Info & Route, Assigned Vehicle, Trip Progress */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          
+          {/* Column 1: Trip & Route Details */}
+          <div className="space-y-4">
+            <h3 className="text-xs font-bold text-text-secondary uppercase tracking-wider">Route Specification</h3>
+            
+            <div className="space-y-3 text-xs">
+              <div className="flex items-start gap-3">
+                <div className="h-5 w-5 bg-primary-light text-primary rounded-circular flex items-center justify-center font-bold text-[10px] shrink-0 mt-0.5">
+                  A
+                </div>
+                <div>
+                  <span className="text-text-secondary font-semibold block">Pickup Location</span>
+                  <span className="font-bold text-text-primary block mt-0.5">San Francisco Cargo Depot (SFO-1)</span>
+                </div>
+              </div>
+
+              <div className="flex items-start gap-3">
+                <div className="h-5 w-5 bg-success-light text-success rounded-circular flex items-center justify-center font-bold text-[10px] shrink-0 mt-0.5">
+                  B
+                </div>
+                <div>
+                  <span className="text-text-secondary font-semibold block">Destination Terminal</span>
+                  <span className="font-bold text-text-primary block mt-0.5">Los Angeles Port Terminal (LAX-4)</span>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4 pt-1 border-t border-gray-100 mt-2">
+                <div>
+                  <span className="text-text-secondary font-semibold block">Total Route Distance</span>
+                  <span className="font-bold text-text-primary block mt-0.5">612 km</span>
+                </div>
+                <div>
+                  <span className="text-text-secondary font-semibold block">Scheduled ETA</span>
+                  <span className="font-bold text-text-primary block mt-0.5">14:35 PM (In 45m)</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Column 2: Assigned Vehicle Specs */}
+          <div className="space-y-4 lg:border-l lg:border-gray-100 lg:pl-8">
+            <h3 className="text-xs font-bold text-text-secondary uppercase tracking-wider">Assigned Equipment</h3>
+            
+            <div className="space-y-4 text-xs">
+              <div className="p-4 bg-gray-50 border border-border-app rounded-m flex items-center gap-3">
+                <div className="h-10 w-10 bg-primary-light text-primary rounded-m flex items-center justify-center">
+                  <Truck size={20} />
+                </div>
+                <div>
+                  <span className="text-[10px] font-bold text-text-secondary uppercase">Assigned Truck</span>
+                  <span className="font-bold text-text-primary block text-sm mt-0.5">Volvo FH16 (V-8821)</span>
+                  <span className="text-[10px] text-text-secondary block mt-0.5">Heavy Semi-Electric Rig</span>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <span className="text-text-secondary font-semibold block">Priority Tier</span>
+                  <span className="inline-block mt-0.5 px-2 py-0.2 text-[9px] font-bold uppercase tracking-wider text-error bg-error-light/25 border border-error/15 rounded">
+                    High Priority
+                  </span>
+                </div>
+                <div>
+                  <span className="text-text-secondary font-semibold block">Scheduled Departure</span>
+                  <span className="font-bold text-text-primary block mt-0.5">08:00 AM</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Column 3: Trip Progress */}
+          <div className="space-y-4 lg:border-l lg:border-gray-100 lg:pl-8">
+            <h3 className="text-xs font-bold text-text-secondary uppercase tracking-wider">Trip Progress</h3>
+            
+            <div className="space-y-4 text-xs">
+              
+              {/* Progress percentage bar */}
+              <div className="space-y-1">
+                <div className="flex justify-between font-bold text-text-secondary">
+                  <span>Overall Route Progress</span>
+                  <span className="text-primary font-mono font-bold">87% Completed</span>
+                </div>
+                <div className="h-2.5 w-full bg-gray-100 rounded-circular overflow-hidden">
+                  <div className="h-full bg-primary rounded-circular" style={{ width: "87%" }}></div>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <div className="flex justify-between border-b border-gray-100 pb-2">
+                  <span className="text-text-secondary font-semibold">Stops Progress</span>
+                  <span className="font-bold text-text-primary">3 of 4 Stops Completed</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-text-secondary font-semibold">Current Checkpoint</span>
+                  <span className="font-bold text-text-primary">Bakersfield Stopover (KM 490)</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+
+        {/* Quick Action Buttons Toolbar */}
+        <div className="flex flex-wrap items-center justify-between gap-4 pt-4 border-t border-gray-100">
+          <div className="flex flex-wrap gap-2">
+            <button
+              onClick={() => triggerToast("Trip TRP-9482 started. GPS telemetry tracking activated.")}
+              className="flex h-9 items-center gap-1.5 px-4 bg-primary hover:bg-primary/95 text-text-on-primary text-xs font-bold rounded-m transition-all shadow-small cursor-pointer active:scale-95"
+            >
+              <Navigation size={14} />
+              <span>Start Trip</span>
+            </button>
+            <button
+              onClick={() => triggerToast("Trip paused. Logging rest stop duration HOS values.")}
+              className="flex h-9 items-center gap-1.5 px-4 border border-border-app hover:bg-gray-50 text-text-secondary hover:text-text-primary text-xs font-bold rounded-m transition-all shadow-small cursor-pointer active:scale-95"
+            >
+              <Clock size={14} />
+              <span>Pause Trip</span>
+            </button>
+            <button
+              onClick={() => triggerToast("Trip completed. Uploading cargo weight receipts and manifest logs.")}
+              className="flex h-9 items-center gap-1.5 px-4 bg-success text-text-on-primary hover:bg-success/95 text-xs font-bold rounded-m transition-all shadow-small cursor-pointer active:scale-95"
+            >
+              <CheckCircle2 size={14} />
+              <span>Complete Trip</span>
+            </button>
+          </div>
+
+          <button
+            onClick={() => triggerToast("Exception logging triggered. Dispatch operations notified.")}
+            className="flex h-9 items-center gap-1.5 px-4 border border-error text-error hover:bg-error-light/20 text-xs font-bold rounded-m transition-all shadow-small cursor-pointer active:scale-95"
+          >
+            <AlertTriangle size={14} />
+            <span>Report Issue</span>
+          </button>
         </div>
 
       </div>
