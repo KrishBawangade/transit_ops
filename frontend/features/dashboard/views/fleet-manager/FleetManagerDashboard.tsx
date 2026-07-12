@@ -24,7 +24,8 @@ import {
   AlertCircle,
   Play,
   X,
-  Sparkles
+  Sparkles,
+  ChevronRight
 } from "lucide-react";
 import Link from "next/link";
 
@@ -293,7 +294,7 @@ export default function FleetManagerDashboard() {
   }, [alerts]);
 
   return (
-    <div className="space-y-6 max-w-7xl mx-auto px-4 py-2">
+    <div className="space-y-8 max-w-7xl mx-auto px-4 py-4">
       
       {/* Dynamic Toast feedback */}
       {actionSuccessMessage && (
@@ -341,6 +342,48 @@ export default function FleetManagerDashboard() {
             title="Refresh Fleet Data"
           >
             <RefreshCw size={15} className={`${isRefreshing ? "animate-spin text-primary" : ""}`} />
+          </button>
+        </div>
+      </div>
+
+      {/* Quick Action Hub Toolbar */}
+      <div className="bg-surface-app border border-border-app p-3.5 rounded-m shadow-small flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div className="flex items-center gap-2">
+          <Sparkles className="text-warning shrink-0 animate-pulse" size={16} />
+          <span className="text-xs font-bold text-text-primary uppercase tracking-wider">Operational Shortcuts:</span>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <Link
+            href="/maintenance"
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-primary-light hover:bg-primary/10 border border-primary/20 text-primary text-xs font-bold rounded-m transition-all cursor-pointer active:scale-95 shadow-small"
+          >
+            <Wrench size={13} />
+            <span>Maintenance Hub</span>
+          </Link>
+          <button
+            onClick={() => setActiveActionModal("dispatch")}
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-secondary-light hover:bg-secondary/10 border border-secondary/20 text-secondary text-xs font-bold rounded-m transition-all cursor-pointer active:scale-95 shadow-small"
+          >
+            <Play size={13} />
+            <span>Dispatch Cargo</span>
+          </button>
+          <button
+            onClick={() => setActiveActionModal("maintenance")}
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-warning-light hover:bg-warning-light border border-warning/20 text-warning text-xs font-bold rounded-m transition-all cursor-pointer active:scale-95 shadow-small"
+            style={{ color: "#D97706" }}
+          >
+            <AlertTriangle size={13} />
+            <span>Log Exception</span>
+          </button>
+          <button
+            onClick={() => {
+              handleManualRefresh();
+              showToast("Diagnostics scan initiated. Reviewing telemetry logs.");
+            }}
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-50 hover:bg-gray-100 border border-gray-300 text-text-primary text-xs font-bold rounded-m transition-all cursor-pointer active:scale-95 shadow-small"
+          >
+            <Activity size={13} />
+            <span>Run System Scan</span>
           </button>
         </div>
       </div>
@@ -395,10 +438,10 @@ export default function FleetManagerDashboard() {
 
       {/* Tab Contents: Overview */}
       {activeTab === "overview" && (
-        <div className="space-y-6 animate-fadeIn">
+        <div className="space-y-8 animate-fadeIn">
           
           {/* Key Metrics Grid */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
             
             {/* Metric: Fleet Utilization */}
             <div 
@@ -496,14 +539,14 @@ export default function FleetManagerDashboard() {
           </div>
 
           {/* Main Dashboard Overview Body Grid */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             
             {/* Left 2/3 Column: Live Trips Pipeline & Roster Overview */}
-            <div className="lg:col-span-2 space-y-6">
+            <div className="lg:col-span-2 space-y-8">
               
               {/* Live Trips Table */}
               <div className="bg-surface-app border border-border-app rounded-m shadow-card flex flex-col">
-                <div className="p-4 border-b border-border-app flex items-center justify-between">
+                <div className="p-6 border-b border-border-app flex items-center justify-between">
                   <div>
                     <h3 className="font-bold text-text-primary text-base">Live Trips Monitoring</h3>
                     <p className="text-xs text-text-secondary">Currently dispatched assets in cargo transit pipeline.</p>
@@ -521,25 +564,25 @@ export default function FleetManagerDashboard() {
                   <table className="w-full text-left border-collapse">
                     <thead>
                       <tr className="bg-gray-50 border-b border-border-app text-[10px] font-bold text-text-secondary uppercase tracking-wider">
-                        <th className="p-4">Trip ID</th>
-                        <th className="p-4">Asset & Driver</th>
-                        <th className="p-4">Cargo Route</th>
-                        <th className="p-4">Progress</th>
-                        <th className="p-4">ETA & Status</th>
+                        <th className="px-6 py-4">Trip ID</th>
+                        <th className="px-6 py-4">Asset & Driver</th>
+                        <th className="px-6 py-4">Cargo Route</th>
+                        <th className="px-6 py-4">Progress</th>
+                        <th className="px-6 py-4">ETA & Status</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-100 text-sm">
                       {trips.slice(0, 4).map((trip) => (
                         <tr key={trip.id} className="hover:bg-gray-50/50 transition-colors">
-                          <td className="p-4 font-mono font-bold text-xs text-primary">{trip.id}</td>
-                          <td className="p-4">
+                          <td className="px-6 py-5 font-mono font-bold text-xs text-primary">{trip.id}</td>
+                          <td className="px-6 py-5">
                             <div className="flex flex-col">
                               <span className="font-semibold text-text-primary text-xs">{trip.vehicle}</span>
                               <span className="text-[11px] text-text-secondary">{trip.driver}</span>
                             </div>
                           </td>
-                          <td className="p-4 text-text-secondary text-xs">{trip.route}</td>
-                          <td className="p-4">
+                          <td className="px-6 py-5 text-text-secondary text-xs">{trip.route}</td>
+                          <td className="px-6 py-5">
                             <div className="w-full max-w-[80px] space-y-1">
                               <div className="flex items-center justify-between text-[10px] text-text-secondary font-bold">
                                 <span>{trip.progress}%</span>
@@ -552,7 +595,7 @@ export default function FleetManagerDashboard() {
                               </div>
                             </div>
                           </td>
-                          <td className="p-4">
+                          <td className="px-6 py-5">
                             <div className="flex flex-col items-start gap-1">
                               <span className="font-bold text-text-primary text-xs">{trip.eta}</span>
                               <span 
@@ -574,8 +617,8 @@ export default function FleetManagerDashboard() {
               </div>
 
               {/* Roster Spotlight Details */}
-              <div className="bg-surface-app border border-border-app rounded-m shadow-card p-4">
-                <div className="flex items-center justify-between border-b border-border-app pb-3 mb-4">
+              <div className="bg-surface-app border border-border-app rounded-m shadow-card p-6">
+                <div className="flex items-center justify-between border-b border-border-app pb-3 mb-5">
                   <div>
                     <h3 className="font-bold text-text-primary text-base">Key Fleet Analytics</h3>
                     <p className="text-xs text-text-secondary">Summary breakdown of operations by status.</p>
@@ -588,10 +631,10 @@ export default function FleetManagerDashboard() {
                   </button>
                 </div>
                 
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-center">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-6 text-center">
                   <div 
                     onClick={() => { setActiveTab("vehicles"); setStatusFilter("Active"); }}
-                    className="bg-gray-50 p-3.5 rounded-m border border-border-app hover:border-success/30 hover:bg-success-light/10 active:scale-[0.97] cursor-pointer transition-all duration-150"
+                    className="bg-gray-50 p-5 rounded-m border border-border-app hover:border-success/30 hover:bg-success-light/10 active:scale-[0.97] cursor-pointer transition-all duration-150"
                   >
                     <span className="text-[10px] font-bold text-text-secondary uppercase">Active</span>
                     <span className="block text-2xl font-extrabold text-success mt-1">
@@ -600,25 +643,25 @@ export default function FleetManagerDashboard() {
                   </div>
                   <div 
                     onClick={() => { setActiveTab("vehicles"); setStatusFilter("Idle"); }}
-                    className="bg-gray-50 p-3.5 rounded-m border border-border-app hover:border-warning/30 hover:bg-warning-light/10 active:scale-[0.97] cursor-pointer transition-all duration-150"
+                    className="bg-gray-50 p-5 rounded-m border border-border-app hover:border-warning/30 hover:bg-warning-light/10 active:scale-[0.97] cursor-pointer transition-all duration-150"
                   >
                     <span className="text-[10px] font-bold text-text-secondary uppercase">Idle / Standby</span>
                     <span className="block text-2xl font-extrabold text-warning mt-1">
                       {vehicles.filter(v => v.status === "Idle").length}
                     </span>
                   </div>
-                  <div 
-                    onClick={() => { setActiveTab("vehicles"); setStatusFilter("Maintenance"); }}
-                    className="bg-gray-50 p-3.5 rounded-m border border-border-app hover:border-primary/30 hover:bg-primary-light active:scale-[0.97] cursor-pointer transition-all duration-150"
+                  <Link 
+                    href="/maintenance"
+                    className="bg-gray-50 p-5 rounded-m border border-border-app hover:border-primary/30 hover:bg-primary-light active:scale-[0.97] cursor-pointer transition-all duration-150 block"
                   >
                     <span className="text-[10px] font-bold text-text-secondary uppercase">In Service Bay</span>
                     <span className="block text-2xl font-extrabold text-primary mt-1">
                       {vehicles.filter(v => v.status === "Maintenance").length}
                     </span>
-                  </div>
+                  </Link>
                   <div 
                     onClick={() => { setActiveTab("vehicles"); setStatusFilter("Offline"); }}
-                    className="bg-gray-50 p-3.5 rounded-m border border-border-app hover:border-gray-400/30 hover:bg-gray-100 active:scale-[0.97] cursor-pointer transition-all duration-150"
+                    className="bg-gray-50 p-5 rounded-m border border-border-app hover:border-gray-400/30 hover:bg-gray-100 active:scale-[0.97] cursor-pointer transition-all duration-150"
                   >
                     <span className="text-[10px] font-bold text-text-secondary uppercase">Offline</span>
                     <span className="block text-2xl font-extrabold text-text-secondary mt-1">
@@ -631,11 +674,11 @@ export default function FleetManagerDashboard() {
             </div>
 
             {/* Right 1/3 Column: Live Exceptions Center & Action Center */}
-            <div className="space-y-6">
+            <div className="space-y-8">
               
               {/* Exceptions Feed */}
-              <div className="bg-surface-app border border-border-app rounded-m shadow-card p-4">
-                <div className="flex items-center justify-between pb-3 border-b border-border-app mb-4">
+              <div className="bg-surface-app border border-border-app rounded-m shadow-card p-6">
+                <div className="flex items-center justify-between pb-3 border-b border-border-app mb-5">
                   <div className="flex items-center gap-2">
                     <ShieldAlert className="text-error" size={18} />
                     <h3 className="font-bold text-text-primary text-base">System Exceptions</h3>
@@ -650,7 +693,7 @@ export default function FleetManagerDashboard() {
                   )}
                 </div>
 
-                <div className="space-y-3 max-h-[300px] overflow-y-auto pr-1">
+                <div className="space-y-4 max-h-[300px] overflow-y-auto pr-1">
                   {activeAlertsList.length === 0 ? (
                     <div className="py-8 text-center flex flex-col items-center justify-center bg-gray-50 rounded-m border border-dashed border-border-app">
                       <CheckCircle2 className="text-success mb-2" size={24} />
@@ -661,7 +704,7 @@ export default function FleetManagerDashboard() {
                     activeAlertsList.map((alert) => (
                       <div 
                         key={alert.id} 
-                        className={`p-3 rounded-m border flex gap-3 items-start transition-all
+                        className={`p-4 rounded-m border flex gap-3 items-start transition-all
                           ${
                             alert.severity === "critical"
                               ? "bg-error-light/20 border-error/20 hover:border-error/40"
@@ -696,17 +739,17 @@ export default function FleetManagerDashboard() {
               </div>
 
               {/* Quick Actions Panel / Operations Playbook */}
-              <div className="bg-surface-app border border-border-app rounded-m shadow-card p-4 space-y-4">
+              <div className="bg-surface-app border border-border-app rounded-m shadow-card p-6 space-y-5">
                 <div>
                   <h3 className="font-bold text-text-primary text-base">Operations Playbook</h3>
                   <p className="text-xs text-text-secondary">Dispatch pipeline operations and diagnostics.</p>
                 </div>
 
-                <div className="grid grid-cols-1 gap-2 text-xs">
+                <div className="grid grid-cols-1 gap-3 text-xs">
                   <button 
                     id="action-dispatch"
                     onClick={() => setActiveActionModal("dispatch")}
-                    className="p-3 bg-gray-50 border border-border-app rounded-m hover:bg-primary-light hover:border-primary/30 transition-all font-semibold text-text-primary text-left flex items-center justify-between cursor-pointer group"
+                    className="p-4 bg-gray-50 border border-border-app rounded-m hover:bg-primary-light hover:border-primary/30 transition-all font-semibold text-text-primary text-left flex items-center justify-between cursor-pointer group"
                   >
                     <div className="flex flex-col">
                       <span className="font-bold group-hover:text-primary transition-colors">Dispatch Active Trip</span>
@@ -718,7 +761,7 @@ export default function FleetManagerDashboard() {
                   <button 
                     id="action-maintenance"
                     onClick={() => setActiveActionModal("maintenance")}
-                    className="p-3 bg-gray-50 border border-border-app rounded-m hover:bg-warning-light/20 hover:border-warning/30 transition-all font-semibold text-text-primary text-left flex items-center justify-between cursor-pointer group"
+                    className="p-4 bg-gray-50 border border-border-app rounded-m hover:bg-warning-light/20 hover:border-warning/30 transition-all font-semibold text-text-primary text-left flex items-center justify-between cursor-pointer group"
                   >
                     <div className="flex flex-col">
                       <span className="font-bold group-hover:text-warning transition-colors">Log Mechanical Exception</span>
@@ -733,7 +776,7 @@ export default function FleetManagerDashboard() {
                       handleManualRefresh();
                       showToast("Diagnostics trigger sent. System analyzing vehicle sensor outputs.");
                     }}
-                    className="p-3 bg-gray-50 border border-border-app rounded-m hover:bg-secondary-light hover:border-secondary/30 transition-all font-semibold text-text-primary text-left flex items-center justify-between cursor-pointer group"
+                    className="p-4 bg-gray-50 border border-border-app rounded-m hover:bg-secondary-light hover:border-secondary/30 transition-all font-semibold text-text-primary text-left flex items-center justify-between cursor-pointer group"
                   >
                     <div className="flex flex-col">
                       <span className="font-bold group-hover:text-secondary transition-colors">Run System Diagnostics</span>
@@ -741,6 +784,17 @@ export default function FleetManagerDashboard() {
                     </div>
                     <Activity size={14} className="text-text-muted group-hover:text-secondary transition-colors" />
                   </button>
+
+                  <Link 
+                    href="/maintenance"
+                    className="p-4 bg-gray-50 border border-border-app rounded-m hover:bg-primary-light hover:border-primary/30 transition-all font-semibold text-text-primary text-left flex items-center justify-between cursor-pointer group"
+                  >
+                    <div className="flex flex-col">
+                      <span className="font-bold group-hover:text-primary transition-colors">Open Maintenance Hub</span>
+                      <span className="text-[10px] text-text-secondary font-normal mt-0.5">Manage work orders & preventive lists</span>
+                    </div>
+                    <ChevronRight size={14} className="text-text-muted group-hover:text-primary transition-colors" />
+                  </Link>
                 </div>
               </div>
 
@@ -753,10 +807,10 @@ export default function FleetManagerDashboard() {
 
       {/* Tab Contents: Active Fleet Roster (Vehicles Management) */}
       {activeTab === "vehicles" && (
-        <div className="space-y-6 animate-fadeIn">
+        <div className="space-y-8 animate-fadeIn">
           
           {/* Controls: Search and Filters */}
-          <div className="flex flex-col md:flex-row gap-3 bg-surface-app border border-border-app p-4 rounded-m shadow-small items-center justify-between">
+          <div className="flex flex-col md:flex-row gap-4 bg-surface-app border border-border-app p-5 rounded-m shadow-small items-center justify-between">
             
             {/* Search Input */}
             <div className="relative w-full md:max-w-xs">
@@ -803,7 +857,7 @@ export default function FleetManagerDashboard() {
               <span className="text-xs text-text-secondary mt-1">Try modifying your search text or status criteria filter.</span>
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {filteredVehicles.map((vehicle) => {
                 const isBatteryLow = vehicle.fuelType === "Electric" && vehicle.fuelLevel < 20;
                 const isFuelLow = vehicle.fuelType === "Diesel" && vehicle.fuelLevel < 20;
@@ -812,7 +866,7 @@ export default function FleetManagerDashboard() {
                 return (
                   <div 
                     key={vehicle.id} 
-                    className="bg-surface-app border border-border-app rounded-m p-5 shadow-card hover:border-primary/20 transition-all duration-200 flex flex-col justify-between"
+                    className="bg-surface-app border border-border-app rounded-m p-6 shadow-card hover:border-primary/20 transition-all duration-200 flex flex-col justify-between"
                   >
                     
                     {/* Vehicle Header Info */}
