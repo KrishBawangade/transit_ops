@@ -6,6 +6,8 @@ import { DriverCompliance } from "@/features/drivers/views/safety-officer/Driver
 import { driverService } from "@/features/drivers/services/driver.service";
 import { apiClient } from "@/lib/core/services/api-client";
 
+let cachedDrivers: any[] | null = null;
+
 export default function DriversPage() {
   const [role, setRole] = useState("fleet-manager");
   const [drivers, setDrivers] = useState<any[]>([]);
@@ -41,19 +43,46 @@ export default function DriversPage() {
     return () => window.removeEventListener("storage", handleStorage);
   }, []);
 
-  const loadDrivers = async () => {
-    setIsLoading(true);
+  const loadDrivers = async (force = false) => {
+    // 1. Try to read from sessionStorage / in-memory cache first
+    let cached: any[] | null = cachedDrivers;
+    if (!cached && typeof window !== "undefined") {
+      const cachedStr = sessionStorage.getItem("transit_ops_drivers_cache");
+      if (cachedStr) {
+        try {
+          cached = JSON.parse(cachedStr);
+          cachedDrivers = cached;
+        } catch (e) {}
+      }
+    }
+
+    // 2. If cached data exists and we are not forcing a refresh, render it immediately
+    if (cached && !force) {
+      setDrivers(cached);
+      setIsLoading(false);
+      // Fall through to perform a silent background revalidation fetch (Stale-While-Revalidate)
+    } else {
+      setIsLoading(true);
+    }
+
     try {
       const response = await driverService.listDrivers();
       console.log("DRIVERS RESP RECEIVED:", response);
-      if (response && response.data && response.data.length > 0) {
-        setDrivers(response.data);
-      } else {
-        setDrivers(mockDrivers);
+      const freshData = (response && response.data && response.data.length > 0)
+        ? response.data
+        : mockDrivers;
+
+      setDrivers(freshData);
+      cachedDrivers = freshData;
+      if (typeof window !== "undefined") {
+        sessionStorage.setItem("transit_ops_drivers_cache", JSON.stringify(freshData));
       }
     } catch (err) {
       console.error("DRIVERS FETCH ERROR:", err);
-      setDrivers(mockDrivers);
+      if (!cached) {
+        setDrivers(mockDrivers);
+        cachedDrivers = mockDrivers;
+      }
     } finally {
       setIsLoading(false);
     }
@@ -95,7 +124,7 @@ export default function DriversPage() {
         licenseClass: "Class A CDL",
         licenseExpiry: new Date(Date.now() + 365*24*60*60*1000*5).toISOString().split("T")[0]
       });
-      loadDrivers();
+      loadDrivers(true);
     } catch (err: any) {
       console.error(err);
       triggerToast(err.message || "Failed to register driver in database.");
@@ -105,7 +134,14 @@ export default function DriversPage() {
   };
 
   const handleDeleteDriver = (id: string, name: string) => {
-    setDrivers(prev => prev.filter(d => d.id !== id));
+    setDrivers(prev => {
+      const updated = prev.filter(d => d.id !== id);
+      cachedDrivers = updated;
+      if (typeof window !== "undefined") {
+        sessionStorage.setItem("transit_ops_drivers_cache", JSON.stringify(updated));
+      }
+      return updated;
+    });
     triggerToast(`Driver ${name} has been archived successfully.`);
   };
 
