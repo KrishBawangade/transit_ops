@@ -431,7 +431,7 @@ export default function FleetReport() {
               
               {/* Graphic Plot Area */}
               <div className="flex-1 w-full relative pt-4">
-                <svg className="w-full h-full overflow-visible" preserveAspectRatio="none">
+                <svg viewBox="0 0 1000 100" className="w-full h-full" preserveAspectRatio="none">
                   {/* Grid Lines */}
                   {[0, 0.25, 0.5, 0.75, 1].map((ratio, i) => (
                     <line 
