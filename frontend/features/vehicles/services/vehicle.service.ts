@@ -1,220 +1,157 @@
-import { Vehicle, VehicleDocument } from "../types";
+import { Vehicle, VehicleDocument, VehicleStatus, VehicleType } from "../types";
+import { apiClient } from "@/lib/core/services/api-client";
+import { PaginatedResponse } from "@/lib/core/types";
 
-const STORAGE_KEY = "transit_ops_vehicles";
+// Inner type matching backend structure
+interface ApiVehicle {
+  id: string;
+  registrationNumber: string;
+  make: string;
+  model: string;
+  year: number;
+  status: "AVAILABLE" | "ON_TRIP" | "IN_SHOP" | "RETIRED";
+  maxPayloadCapacity: number;
+  fuelType: "DIESEL" | "PETROL" | "ELECTRIC" | "CNG" | "HYBRID";
+  currentOdometer: number;
+  createdAt: string;
+  updatedAt: string;
+  deletedAt?: string | null;
+}
 
-const MOCK_VEHICLES: Vehicle[] = [
-  {
-    id: "v-1",
-    registrationNumber: "TX-8821",
-    name: "Volvo FH16",
-    type: "Truck",
-    capacity: "25 Tons",
-    purchaseDate: "2024-03-12",
-    manufacturer: "Volvo",
-    model: "FH16",
-    fuelType: "Diesel",
-    odometer: 142800,
-    acquisitionCost: 135000,
-    insuranceExpiry: "2027-03-12",
-    fitnessExpiry: "2027-03-12",
-    status: "On Trip",
-    notes: "Main line hauler.",
-  },
-  {
-    id: "v-2",
-    registrationNumber: "CA-4412",
-    name: "Kenworth T680",
-    type: "Truck",
-    capacity: "30 Tons",
-    purchaseDate: "2024-05-15",
-    manufacturer: "Kenworth",
-    model: "T680",
-    fuelType: "Diesel",
-    odometer: 98200,
-    acquisitionCost: 145000,
-    insuranceExpiry: "2026-05-15",
-    fitnessExpiry: "2026-05-15",
-    status: "Available",
-    notes: "Excellent fuel efficiency.",
-  },
-  {
-    id: "v-3",
-    registrationNumber: "NY-9011",
-    name: "Ford Transit",
-    type: "Van",
-    capacity: "1.5 Tons",
-    purchaseDate: "2023-08-20",
-    manufacturer: "Ford",
-    model: "Transit",
-    fuelType: "Gasoline",
-    odometer: 42100,
-    acquisitionCost: 45000,
-    insuranceExpiry: "2026-08-20",
-    fitnessExpiry: "2026-08-20",
-    status: "Available",
-    notes: "Local delivery vehicle.",
-  },
-  {
-    id: "v-4",
-    registrationNumber: "IL-7710",
-    name: "Mercedes Sprinter",
-    type: "Van",
-    capacity: "2.0 Tons",
-    purchaseDate: "2023-01-10",
-    manufacturer: "Mercedes-Benz",
-    model: "Sprinter",
-    fuelType: "Diesel",
-    odometer: 115000,
-    acquisitionCost: 55000,
-    insuranceExpiry: "2026-01-10",
-    fitnessExpiry: "2025-12-10",
-    status: "In Shop",
-    notes: "Transmission service in progress.",
-  },
-  {
-    id: "v-5",
-    registrationNumber: "FL-3392",
-    name: "Toyota HiAce",
-    type: "Mini",
-    capacity: "12 Seats",
-    purchaseDate: "2023-11-05",
-    manufacturer: "Toyota",
-    model: "HiAce",
-    fuelType: "Gasoline",
-    odometer: 65000,
-    acquisitionCost: 38000,
-    insuranceExpiry: "2026-11-05",
-    fitnessExpiry: "2026-11-05",
-    status: "Available",
-    notes: "Shuttle service for staff.",
-  },
-  {
-    id: "v-6",
-    registrationNumber: "NV-1024",
-    name: "MCI D4500",
-    type: "Bus",
-    capacity: "55 Seats",
-    purchaseDate: "2018-04-18",
-    manufacturer: "Motor Coach Industries",
-    model: "D4500",
-    fuelType: "Diesel",
-    odometer: 230000,
-    acquisitionCost: 220000,
-    insuranceExpiry: "2025-04-18",
-    fitnessExpiry: "2025-04-18",
-    status: "Retired",
-    notes: "Retired from active fleet due to age and mileage.",
+function mapToUiVehicle(api: ApiVehicle): Vehicle {
+  let uiStatus: VehicleStatus = "Available";
+  if (api.status === "ON_TRIP") uiStatus = "On Trip";
+  if (api.status === "IN_SHOP") uiStatus = "In Shop";
+  if (api.status === "RETIRED") uiStatus = "Retired";
+
+  const fuelLower = (api.fuelType || "diesel").toLowerCase();
+  const fuelType = fuelLower.charAt(0).toUpperCase() + fuelLower.slice(1);
+
+  let type: VehicleType = "Truck";
+  const modelLower = (api.model || "").toLowerCase();
+  if (modelLower.includes("van") || modelLower.includes("sprinter") || modelLower.includes("transit")) {
+    type = "Van";
+  } else if (modelLower.includes("hiace") || modelLower.includes("shuttle") || modelLower.includes("mini")) {
+    type = "Mini";
+  } else if (modelLower.includes("bus") || modelLower.includes("coach")) {
+    type = "Bus";
   }
-];
+
+  return {
+    id: api.id,
+    registrationNumber: api.registrationNumber,
+    name: `${api.make} ${api.model}`,
+    type,
+    capacity: `${api.maxPayloadCapacity} Tons`,
+    purchaseDate: "2024-01-01",
+    manufacturer: api.make,
+    model: api.model,
+    fuelType,
+    odometer: api.currentOdometer,
+    acquisitionCost: 120000,
+    insuranceExpiry: "2027-01-01",
+    fitnessExpiry: "2027-01-01",
+    status: uiStatus,
+    notes: "Synced with live database.",
+  };
+}
+
+function mapToApiVehicleInput(ui: Omit<Vehicle, "id"> | Partial<Vehicle>): any {
+  const result: any = {};
+  
+  if (ui.registrationNumber) {
+    result.registrationNumber = ui.registrationNumber;
+  }
+  if (ui.manufacturer) {
+    result.make = ui.manufacturer;
+  }
+  if (ui.model) {
+    result.model = ui.model;
+  }
+  result.year = 2024; // Default year
+  
+  if (ui.capacity) {
+    const numericPart = parseFloat(ui.capacity);
+    result.maxPayloadCapacity = isNaN(numericPart) ? 20 : numericPart;
+  }
+  
+  if (ui.fuelType) {
+    result.fuelType = ui.fuelType.toUpperCase() as any;
+  }
+
+  if (ui.odometer !== undefined) {
+    result.currentOdometer = Number(ui.odometer);
+  }
+
+  if (ui.status) {
+    let apiStatus = "AVAILABLE";
+    if (ui.status === "On Trip") apiStatus = "ON_TRIP";
+    if (ui.status === "In Shop") apiStatus = "IN_SHOP";
+    if (ui.status === "Retired") apiStatus = "RETIRED";
+    result.status = apiStatus;
+  }
+
+  return result;
+}
 
 export const vehicleService = {
-  getVehicles(): Promise<Vehicle[]> {
-    if (typeof window === "undefined") {
-      return Promise.resolve(MOCK_VEHICLES);
-    }
-    const data = localStorage.getItem(STORAGE_KEY);
-    if (!data) {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(MOCK_VEHICLES));
-      return Promise.resolve(MOCK_VEHICLES);
-    }
+  async getVehicles(): Promise<Vehicle[]> {
     try {
-      return Promise.resolve(JSON.parse(data));
-    } catch {
-      return Promise.resolve(MOCK_VEHICLES);
+      // Fetch vehicles from backend (no pagination, set limit to 100 to list all)
+      const response = await apiClient.get<PaginatedResponse<ApiVehicle>>("/vehicles", {
+        params: { limit: 100 }
+      });
+      return response.data.map(mapToUiVehicle);
+    } catch (error) {
+      console.error("Failed to fetch vehicles from backend, using empty list", error);
+      return [];
     }
   },
 
-  getVehicleById(id: string): Promise<Vehicle | undefined> {
-    return this.getVehicles().then((vehicles) =>
-      vehicles.find((v) => v.id === id)
-    );
+  async getVehicleById(id: string): Promise<Vehicle | undefined> {
+    try {
+      const apiVehicle = await apiClient.get<ApiVehicle>(`/vehicles/${id}`);
+      return mapToUiVehicle(apiVehicle);
+    } catch (error) {
+      console.error(`Failed to fetch vehicle ${id}`, error);
+      return undefined;
+    }
   },
 
-  createVehicle(vehicleData: Omit<Vehicle, "id">): Promise<Vehicle> {
-    return this.getVehicles().then((vehicles) => {
-      const isUnique = !vehicles.some(
-        (v) =>
-          v.registrationNumber.toLowerCase().trim() ===
-          vehicleData.registrationNumber.toLowerCase().trim()
-      );
-      if (!isUnique) {
-        return Promise.reject(new Error("Registration Number must be unique."));
-      }
-
-      const newVehicle: Vehicle = {
-        ...vehicleData,
-        id: `v-${Date.now()}`,
-      };
-
-      const updated = [...vehicles, newVehicle];
-      if (typeof window !== "undefined") {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
-      }
-      return newVehicle;
-    });
+  async createVehicle(vehicleData: Omit<Vehicle, "id">): Promise<Vehicle> {
+    const payload = mapToApiVehicleInput(vehicleData);
+    const apiVehicle = await apiClient.post<ApiVehicle>("/vehicles", payload);
+    return mapToUiVehicle(apiVehicle);
   },
 
-  updateVehicle(id: string, vehicleData: Partial<Vehicle>): Promise<Vehicle> {
-    return this.getVehicles().then((vehicles) => {
-      const index = vehicles.findIndex((v) => v.id === id);
-      if (index === -1) {
-        return Promise.reject(new Error("Vehicle not found."));
-      }
-
-      if (vehicleData.registrationNumber) {
-        const isUnique = !vehicles.some(
-          (v) =>
-            v.id !== id &&
-            v.registrationNumber.toLowerCase().trim() ===
-              vehicleData.registrationNumber!.toLowerCase().trim()
-        );
-        if (!isUnique) {
-          return Promise.reject(new Error("Registration Number must be unique."));
-        }
-      }
-
-      const updatedVehicle = {
-        ...vehicles[index],
-        ...vehicleData,
-      };
-
-      const updated = [...vehicles];
-      updated[index] = updatedVehicle;
-
-      if (typeof window !== "undefined") {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
-      }
-      return updatedVehicle;
-    });
+  async updateVehicle(id: string, vehicleData: Partial<Vehicle>): Promise<Vehicle> {
+    const payload = mapToApiVehicleInput(vehicleData);
+    const apiVehicle = await apiClient.put<ApiVehicle>(`/vehicles/${id}`, payload);
+    return mapToUiVehicle(apiVehicle);
   },
 
-  deleteVehicle(id: string): Promise<boolean> {
-    return this.getVehicles().then((vehicles) => {
-      const updated = vehicles.filter((v) => v.id !== id);
-      if (typeof window !== "undefined") {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
-      }
-      return true;
-    });
+  async deleteVehicle(id: string): Promise<boolean> {
+    await apiClient.delete(`/vehicles/${id}`);
+    return true;
   },
 
-  checkRegistrationNumberUnique(
+  async checkRegistrationNumberUnique(
     registrationNumber: string,
     excludeId?: string
   ): Promise<boolean> {
-    return this.getVehicles().then((vehicles) => {
-      return !vehicles.some(
-        (v) =>
-          v.id !== excludeId &&
-          v.registrationNumber.toLowerCase().trim() ===
-            registrationNumber.toLowerCase().trim()
-      );
-    });
+    const vehicles = await this.getVehicles();
+    return !vehicles.some(
+      (v) =>
+        v.id !== excludeId &&
+        v.registrationNumber.toLowerCase().trim() ===
+          registrationNumber.toLowerCase().trim()
+    );
   },
 
-  getVehicleDocuments(vehicleId: string): Promise<VehicleDocument[]> {
+  // Document management routes (fallback mock storage since backend does not support document model yet)
+  async getVehicleDocuments(vehicleId: string): Promise<VehicleDocument[]> {
     if (typeof window === "undefined") {
-      return Promise.resolve([]);
+      return [];
     }
     const DOCUMENTS_STORAGE_KEY = "transit_ops_vehicle_documents";
     
@@ -239,59 +176,52 @@ export const vehicleService = {
           { id: "doc-3", name: "Fitness Certificate", documentNumber: "FIT-TX8821", issueDate: getPastDate(300), expiryDate: getFutureDate(200), fileName: "fitness_volvo.pdf" },
           { id: "doc-4", name: "Pollution Certificate (PUC)", documentNumber: "PUC-TX8821", issueDate: getPastDate(100), expiryDate: getFutureDate(12), fileName: "puc_volvo.pdf" },
           { id: "doc-5", name: "Permit", documentNumber: "PER-TX8821", issueDate: getPastDate(300), expiryDate: getFutureDate(600), fileName: "permit_volvo.pdf" }
-        ],
-        "v-2": [
-          { id: "doc-6", name: "Registration Certificate (RC)", documentNumber: "RC-CA4412", issueDate: getPastDate(400), expiryDate: getFutureDate(2600), fileName: "rc_kenworth.pdf" },
-          { id: "doc-7", name: "Insurance", documentNumber: "INS-CA4412", issueDate: getPastDate(400), expiryDate: getFutureDate(18), fileName: "insurance_kenworth.pdf" },
-          { id: "doc-8", name: "Fitness Certificate", documentNumber: "FIT-CA4412", issueDate: getPastDate(400), expiryDate: getPastDate(12), fileName: "fitness_kenworth.pdf" },
-          { id: "doc-9", name: "Pollution Certificate (PUC)", documentNumber: "PUC-CA4412", issueDate: getPastDate(150), expiryDate: getFutureDate(15), fileName: "puc_kenworth.pdf" },
-          { id: "doc-10", name: "Permit", documentNumber: "PER-CA4412", issueDate: getPastDate(400), expiryDate: getFutureDate(500), fileName: "permit_kenworth.pdf" }
         ]
       };
       localStorage.setItem(DOCUMENTS_STORAGE_KEY, JSON.stringify(initial));
-      return Promise.resolve(initial[vehicleId] || []);
+      return initial[vehicleId] || [];
     }
     try {
       const parsed = JSON.parse(data);
-      return Promise.resolve(parsed[vehicleId] || []);
+      return parsed[vehicleId] || [];
     } catch {
-      return Promise.resolve([]);
+      return [];
     }
   },
 
-  saveVehicleDocuments(vehicleId: string, documents: VehicleDocument[]): Promise<VehicleDocument[]> {
+  async saveVehicleDocuments(vehicleId: string, documents: VehicleDocument[]): Promise<VehicleDocument[]> {
     if (typeof window === "undefined") {
-      return Promise.resolve(documents);
+      return documents;
     }
     const DOCUMENTS_STORAGE_KEY = "transit_ops_vehicle_documents";
     const data = localStorage.getItem(DOCUMENTS_STORAGE_KEY);
     const parsed = data ? JSON.parse(data) : {};
     parsed[vehicleId] = documents;
     localStorage.setItem(DOCUMENTS_STORAGE_KEY, JSON.stringify(parsed));
-    return Promise.resolve(documents);
+    return documents;
   },
 
-  addOrUpdateDocument(vehicleId: string, doc: Omit<VehicleDocument, "id"> & { id?: string }): Promise<VehicleDocument> {
-    return this.getVehicleDocuments(vehicleId).then((docs) => {
-      let updatedDoc: VehicleDocument;
-      let updatedDocs: VehicleDocument[];
+  async addOrUpdateDocument(vehicleId: string, doc: Omit<VehicleDocument, "id"> & { id?: string }): Promise<VehicleDocument> {
+    const docs = await this.getVehicleDocuments(vehicleId);
+    let updatedDoc: VehicleDocument;
+    let updatedDocs: VehicleDocument[];
 
-      if (doc.id) {
-        updatedDoc = { ...doc, id: doc.id } as VehicleDocument;
-        updatedDocs = docs.map((d) => d.id === doc.id ? updatedDoc : d);
-      } else {
-        updatedDoc = { ...doc, id: `doc-${Date.now()}`, name: doc.name };
-        updatedDocs = [...docs, updatedDoc];
-      }
+    if (doc.id) {
+      updatedDoc = { ...doc, id: doc.id } as VehicleDocument;
+      updatedDocs = docs.map((d) => d.id === doc.id ? updatedDoc : d);
+    } else {
+      updatedDoc = { ...doc, id: `doc-${Date.now()}`, name: doc.name };
+      updatedDocs = [...docs, updatedDoc];
+    }
 
-      return this.saveVehicleDocuments(vehicleId, updatedDocs).then(() => updatedDoc);
-    });
+    await this.saveVehicleDocuments(vehicleId, updatedDocs);
+    return updatedDoc;
   },
 
-  removeDocument(vehicleId: string, docId: string): Promise<boolean> {
-    return this.getVehicleDocuments(vehicleId).then((docs) => {
-      const filtered = docs.filter((d) => d.id !== docId);
-      return this.saveVehicleDocuments(vehicleId, filtered).then(() => true);
-    });
+  async removeDocument(vehicleId: string, docId: string): Promise<boolean> {
+    const docs = await this.getVehicleDocuments(vehicleId);
+    const filtered = docs.filter((d) => d.id !== docId);
+    await this.saveVehicleDocuments(vehicleId, filtered);
+    return true;
   }
 };
