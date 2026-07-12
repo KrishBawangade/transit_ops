@@ -13,7 +13,14 @@ import {
   ShieldCheck, 
   Sparkles,
   CheckCircle2,
-  X
+  X,
+  Route,
+  Navigation,
+  Gauge,
+  Star,
+  TrendingUp,
+  AlertTriangle,
+  MapPin
 } from "lucide-react";
 
 export default function DriverDashboard() {
@@ -199,6 +206,128 @@ export default function DriverDashboard() {
           </div>
 
         </div>
+      </div>
+
+      {/* 2. Overview KPI Cards Section */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-6">
+        
+        {/* Card 1: Today's Trips */}
+        <div className="bg-surface-app border border-border-app p-6 rounded-m shadow-card flex flex-col justify-between hover:border-primary/20 transition-all group">
+          <div className="flex items-start justify-between">
+            <div className="space-y-1">
+              <span className="text-[10px] font-bold text-text-secondary uppercase tracking-wider block">Today's Trips</span>
+              <span className="text-3xl font-extrabold text-text-primary block">4 Trips</span>
+            </div>
+            <div className="h-10 w-10 rounded-m bg-primary-light text-primary flex items-center justify-center shadow-small group-hover:scale-105 transition-transform duration-200">
+              <Route size={18} />
+            </div>
+          </div>
+          <div className="mt-4 pt-3 border-t border-gray-100 flex items-center justify-between text-xs">
+            <span className="text-text-secondary font-medium">1 Scheduled • 3 Active</span>
+            <span className="font-bold text-success flex items-center gap-0.5 text-[10px]">
+              <TrendingUp size={12} /> Stable
+            </span>
+          </div>
+        </div>
+
+        {/* Card 2: Active Trip */}
+        <div className="bg-surface-app border border-border-app p-6 rounded-m shadow-card flex flex-col justify-between hover:border-secondary/20 transition-all group">
+          <div className="flex items-start justify-between">
+            <div className="space-y-1">
+              <span className="text-[10px] font-bold text-text-secondary uppercase tracking-wider block">Active Trip</span>
+              <span className="text-xl font-extrabold text-primary block mt-1">TRP-9482</span>
+            </div>
+            <div className="h-10 w-10 rounded-m bg-secondary-light text-secondary flex items-center justify-center shadow-small group-hover:scale-105 transition-transform duration-200">
+              <Navigation size={18} className="animate-pulse" />
+            </div>
+          </div>
+          <div className="mt-4 pt-3 border-t border-gray-100 flex items-center justify-between text-xs">
+            <span className="text-text-secondary font-medium">Route: SFO ➔ LAX</span>
+            <span className="font-bold px-1.5 py-0.2 bg-success-light text-success text-[10px] rounded uppercase tracking-wider border border-success/20">
+              In Progress
+            </span>
+          </div>
+        </div>
+
+        {/* Card 3: Completed Deliveries */}
+        <div className="bg-surface-app border border-border-app p-6 rounded-m shadow-card flex flex-col justify-between hover:border-success/20 transition-all group">
+          <div className="flex items-start justify-between">
+            <div className="space-y-1">
+              <span className="text-[10px] font-bold text-text-secondary uppercase tracking-wider block">Completed</span>
+              <span className="text-3xl font-extrabold text-success block">12 / 15</span>
+            </div>
+            <div className="h-10 w-10 rounded-m bg-success-light text-success flex items-center justify-center shadow-small group-hover:scale-105 transition-transform duration-200">
+              <CheckCircle2 size={18} />
+            </div>
+          </div>
+          <div className="mt-4 pt-3 border-t border-gray-100 flex flex-col gap-1.5 text-xs">
+            <div className="flex justify-between text-[10px] font-bold text-text-secondary">
+              <span>Delivery Rate</span>
+              <span>80%</span>
+            </div>
+            <div className="h-1 w-full bg-gray-100 rounded-circular overflow-hidden">
+              <div className="h-full bg-success rounded-circular" style={{ width: "80%" }}></div>
+            </div>
+          </div>
+        </div>
+
+        {/* Card 4: Pending Deliveries */}
+        <div className="bg-surface-app border border-border-app p-6 rounded-m shadow-card flex flex-col justify-between hover:border-warning/20 transition-all group">
+          <div className="flex items-start justify-between">
+            <div className="space-y-1">
+              <span className="text-[10px] font-bold text-text-secondary uppercase tracking-wider block">Pending</span>
+              <span className="text-3xl font-extrabold text-warning block">3 Left</span>
+            </div>
+            <div className="h-10 w-10 rounded-m bg-warning-light text-warning flex items-center justify-center shadow-small group-hover:scale-105 transition-transform duration-200">
+              <Clock size={18} />
+            </div>
+          </div>
+          <div className="mt-4 pt-3 border-t border-gray-100 flex items-center justify-between text-xs">
+            <span className="text-text-secondary font-medium">Next ETA: 16:30</span>
+            <span className="font-bold text-error flex items-center gap-0.5 text-[10px] uppercase">
+              <AlertTriangle size={11} className="animate-bounce" /> 1 Overdue
+            </span>
+          </div>
+        </div>
+
+        {/* Card 5: Distance Covered */}
+        <div className="bg-surface-app border border-border-app p-6 rounded-m shadow-card flex flex-col justify-between hover:border-info/20 transition-all group">
+          <div className="flex items-start justify-between">
+            <div className="space-y-1">
+              <span className="text-[10px] font-bold text-text-secondary uppercase tracking-wider block">Distance Today</span>
+              <span className="text-3xl font-extrabold text-text-primary block">284 km</span>
+            </div>
+            <div className="h-10 w-10 rounded-m bg-info-light text-info flex items-center justify-center shadow-small group-hover:scale-105 transition-transform duration-200">
+              <Gauge size={18} />
+            </div>
+          </div>
+          <div className="mt-4 pt-3 border-t border-gray-100 flex items-center justify-between text-xs">
+            <span className="text-text-secondary font-medium">Yesterday: 250 km</span>
+            <span className="font-bold text-success flex items-center gap-0.5 text-[10px]">
+              <TrendingUp size={12} /> +13.6%
+            </span>
+          </div>
+        </div>
+
+        {/* Card 6: Driver Rating */}
+        <div className="bg-surface-app border border-border-app p-6 rounded-m shadow-card flex flex-col justify-between hover:border-warning/20 transition-all group">
+          <div className="flex items-start justify-between">
+            <div className="space-y-1">
+              <span className="text-[10px] font-bold text-text-secondary uppercase tracking-wider block">Driver Rating</span>
+              <span className="text-3xl font-extrabold text-text-primary block">4.92</span>
+            </div>
+            <div className="h-10 w-10 rounded-m bg-warning-light text-warning flex items-center justify-center shadow-small group-hover:scale-105 transition-transform duration-200">
+              <Star size={18} className="fill-warning" />
+            </div>
+          </div>
+          <div className="mt-4 pt-3 border-t border-gray-100 flex items-center justify-between text-xs">
+            <span className="text-text-secondary font-medium">Top 5% regional</span>
+            <span className="font-semibold text-success flex items-center gap-0.5 text-[10px]">
+              <TrendingUp size={12} /> +0.04
+            </span>
+          </div>
+        </div>
+
       </div>
 
     </div>
