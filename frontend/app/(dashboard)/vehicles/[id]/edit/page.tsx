@@ -1,4 +1,4 @@
-import { VehicleEdit } from "@/lib/features/vehicles/views/fleet-manager/VehicleEdit";
+import { VehicleEdit } from "@/features/vehicles/views/fleet-manager/VehicleEdit";
 
 interface PageProps {
   params: Promise<{ id: string }>;

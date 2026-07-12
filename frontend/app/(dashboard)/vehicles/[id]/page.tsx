@@ -1,4 +1,4 @@
-import { VehicleDetails } from "@/lib/features/vehicles/views/fleet-manager/VehicleDetails";
+import { VehicleDetails } from "@/features/vehicles/views/fleet-manager/VehicleDetails";
 
 interface PageProps {
   params: Promise<{ id: string }>;
