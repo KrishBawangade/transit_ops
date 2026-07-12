@@ -1,4 +1,4 @@
-import { Vehicle } from "../types";
+import { Vehicle, VehicleDocument } from "../types";
 
 const STORAGE_KEY = "transit_ops_vehicles";
 
@@ -211,4 +211,87 @@ export const vehicleService = {
       );
     });
   },
+
+  getVehicleDocuments(vehicleId: string): Promise<VehicleDocument[]> {
+    if (typeof window === "undefined") {
+      return Promise.resolve([]);
+    }
+    const DOCUMENTS_STORAGE_KEY = "transit_ops_vehicle_documents";
+    
+    const getFutureDate = (daysAhead: number) => {
+      const d = new Date();
+      d.setDate(d.getDate() + daysAhead);
+      return d.toISOString().split("T")[0];
+    };
+
+    const getPastDate = (daysAgo: number) => {
+      const d = new Date();
+      d.setDate(d.getDate() - daysAgo);
+      return d.toISOString().split("T")[0];
+    };
+
+    const data = localStorage.getItem(DOCUMENTS_STORAGE_KEY);
+    if (!data) {
+      const initial: Record<string, VehicleDocument[]> = {
+        "v-1": [
+          { id: "doc-1", name: "Registration Certificate (RC)", documentNumber: "RC-TX8821", issueDate: getPastDate(300), expiryDate: getFutureDate(3000), fileName: "rc_volvo.pdf" },
+          { id: "doc-2", name: "Insurance", documentNumber: "INS-TX8821", issueDate: getPastDate(300), expiryDate: getFutureDate(300), fileName: "insurance_volvo.pdf" },
+          { id: "doc-3", name: "Fitness Certificate", documentNumber: "FIT-TX8821", issueDate: getPastDate(300), expiryDate: getFutureDate(200), fileName: "fitness_volvo.pdf" },
+          { id: "doc-4", name: "Pollution Certificate (PUC)", documentNumber: "PUC-TX8821", issueDate: getPastDate(100), expiryDate: getFutureDate(12), fileName: "puc_volvo.pdf" },
+          { id: "doc-5", name: "Permit", documentNumber: "PER-TX8821", issueDate: getPastDate(300), expiryDate: getFutureDate(600), fileName: "permit_volvo.pdf" }
+        ],
+        "v-2": [
+          { id: "doc-6", name: "Registration Certificate (RC)", documentNumber: "RC-CA4412", issueDate: getPastDate(400), expiryDate: getFutureDate(2600), fileName: "rc_kenworth.pdf" },
+          { id: "doc-7", name: "Insurance", documentNumber: "INS-CA4412", issueDate: getPastDate(400), expiryDate: getFutureDate(18), fileName: "insurance_kenworth.pdf" },
+          { id: "doc-8", name: "Fitness Certificate", documentNumber: "FIT-CA4412", issueDate: getPastDate(400), expiryDate: getPastDate(12), fileName: "fitness_kenworth.pdf" },
+          { id: "doc-9", name: "Pollution Certificate (PUC)", documentNumber: "PUC-CA4412", issueDate: getPastDate(150), expiryDate: getFutureDate(15), fileName: "puc_kenworth.pdf" },
+          { id: "doc-10", name: "Permit", documentNumber: "PER-CA4412", issueDate: getPastDate(400), expiryDate: getFutureDate(500), fileName: "permit_kenworth.pdf" }
+        ]
+      };
+      localStorage.setItem(DOCUMENTS_STORAGE_KEY, JSON.stringify(initial));
+      return Promise.resolve(initial[vehicleId] || []);
+    }
+    try {
+      const parsed = JSON.parse(data);
+      return Promise.resolve(parsed[vehicleId] || []);
+    } catch {
+      return Promise.resolve([]);
+    }
+  },
+
+  saveVehicleDocuments(vehicleId: string, documents: VehicleDocument[]): Promise<VehicleDocument[]> {
+    if (typeof window === "undefined") {
+      return Promise.resolve(documents);
+    }
+    const DOCUMENTS_STORAGE_KEY = "transit_ops_vehicle_documents";
+    const data = localStorage.getItem(DOCUMENTS_STORAGE_KEY);
+    const parsed = data ? JSON.parse(data) : {};
+    parsed[vehicleId] = documents;
+    localStorage.setItem(DOCUMENTS_STORAGE_KEY, JSON.stringify(parsed));
+    return Promise.resolve(documents);
+  },
+
+  addOrUpdateDocument(vehicleId: string, doc: Omit<VehicleDocument, "id"> & { id?: string }): Promise<VehicleDocument> {
+    return this.getVehicleDocuments(vehicleId).then((docs) => {
+      let updatedDoc: VehicleDocument;
+      let updatedDocs: VehicleDocument[];
+
+      if (doc.id) {
+        updatedDoc = { ...doc, id: doc.id } as VehicleDocument;
+        updatedDocs = docs.map((d) => d.id === doc.id ? updatedDoc : d);
+      } else {
+        updatedDoc = { ...doc, id: `doc-${Date.now()}`, name: doc.name };
+        updatedDocs = [...docs, updatedDoc];
+      }
+
+      return this.saveVehicleDocuments(vehicleId, updatedDocs).then(() => updatedDoc);
+    });
+  },
+
+  removeDocument(vehicleId: string, docId: string): Promise<boolean> {
+    return this.getVehicleDocuments(vehicleId).then((docs) => {
+      const filtered = docs.filter((d) => d.id !== docId);
+      return this.saveVehicleDocuments(vehicleId, filtered).then(() => true);
+    });
+  }
 };

@@ -2,6 +2,15 @@ export type VehicleType = "Van" | "Truck" | "Mini" | "Bus";
 
 export type VehicleStatus = "Available" | "On Trip" | "In Shop" | "Retired";
 
+export interface VehicleDocument {
+  id: string;
+  name: string; // e.g. "Registration Certificate (RC)", "Insurance", etc.
+  documentNumber: string;
+  issueDate: string; // YYYY-MM-DD
+  expiryDate: string; // YYYY-MM-DD
+  fileName?: string;
+}
+
 export interface Vehicle {
   id: string;
   registrationNumber: string;
