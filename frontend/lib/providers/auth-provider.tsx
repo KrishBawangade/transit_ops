@@ -173,7 +173,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   return (
     <AuthContext.Provider value={{ user, token, isLoading, login, register, logout }}>
-      {children}
+      {isLoading ? (
+        <div className="flex h-screen w-screen items-center justify-center bg-background-app text-primary select-none space-y-4 flex-col font-sans">
+          <div className="h-8 w-8 border-4 border-primary border-t-transparent rounded-circular animate-spin"></div>
+          <p className="text-xs text-text-secondary font-bold">Verifying operational credentials...</p>
+        </div>
+      ) : (
+        children
+      )}
     </AuthContext.Provider>
   );
 }

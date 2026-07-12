@@ -40,6 +40,12 @@ class ApiClient {
 
   private async handleResponse<T>(response: Response): Promise<T> {
     if (!response.ok) {
+      if (response.status === 401) {
+        if (typeof window !== "undefined") {
+          localStorage.removeItem("transit_ops_token");
+          window.location.reload();
+        }
+      }
       let errorMessage = "An error occurred while fetching the data.";
       try {
         const errorData = await response.json();
