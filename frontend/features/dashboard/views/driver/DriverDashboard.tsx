@@ -651,7 +651,7 @@ export default function DriverDashboard() {
                     <div className="flex items-center gap-2 shrink-0">
                       <button
                         onClick={() => triggerToast(`Opening manifest and cargo weight logs for ${trip.id}.`)}
-                        className="flex h-8 items-center justify-center px-3 border border-border-app bg-surface-app hover:bg-gray-50 text-[11px] font-bold text-text-secondary hover:text-text-primary rounded transition-all cursor-pointer"
+                        className="flex h-9 items-center justify-center px-4 border border-border-app bg-white hover:bg-gray-50 text-xs font-bold text-text-secondary hover:text-text-primary rounded-m transition-all shadow-small cursor-pointer active:scale-95 shrink-0"
                       >
                         View Details
                       </button>
@@ -659,9 +659,9 @@ export default function DriverDashboard() {
                       {isActive && (
                         <button
                           onClick={() => triggerToast(`GPS route navigation mapping loaded for ${trip.id}.`)}
-                          className="flex h-8 items-center gap-1 px-3 bg-primary hover:bg-primary/95 text-[11px] font-bold text-text-on-primary rounded transition-all shadow-small cursor-pointer"
+                          className="flex h-9 items-center gap-1.5 px-4 bg-primary hover:bg-primary/95 text-xs font-bold text-text-on-primary rounded-m transition-all shadow-small cursor-pointer active:scale-95 shrink-0"
                         >
-                          <Navigation size={12} />
+                          <Navigation size={13} />
                           <span>Navigate</span>
                         </button>
                       )}
@@ -669,9 +669,9 @@ export default function DriverDashboard() {
                       {isUpcoming && (
                         <button
                           onClick={() => triggerToast(`Initiating trip ${trip.id}. Dispatch operations center notified.`)}
-                          className="flex h-8 items-center gap-1 px-3 bg-success hover:bg-success/95 text-[11px] font-bold text-text-on-primary rounded transition-all shadow-small cursor-pointer"
+                          className="flex h-9 items-center gap-1.5 px-4 bg-success hover:bg-success/95 text-xs font-bold text-text-on-primary rounded-m transition-all shadow-small cursor-pointer active:scale-95 shrink-0"
                         >
-                          <Play size={12} />
+                          <Play size={13} />
                           <span>Start Trip</span>
                         </button>
                       )}
