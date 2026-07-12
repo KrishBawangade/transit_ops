@@ -57,6 +57,15 @@ export function VehicleForm({ initialData, onSave, onCancel }: VehicleFormProps)
     if (!formData.registrationNumber.trim()) {
       tempErrors.registrationNumber = "Registration Number is required.";
     }
+    if (!formData.name.trim()) {
+      tempErrors.name = "Vehicle Name is required.";
+    }
+    if (formData.acquisitionCost < 0) {
+      tempErrors.acquisitionCost = "Acquisition Cost cannot be negative.";
+    }
+    if (formData.odometer < 0) {
+      tempErrors.odometer = "Odometer cannot be negative.";
+    }
 
     if (Object.keys(tempErrors).length > 0) {
       setErrors(tempErrors);
@@ -124,7 +133,9 @@ export function VehicleForm({ initialData, onSave, onCancel }: VehicleFormProps)
         </div>
 
         <div>
-          <label className="block text-xs font-semibold text-text-secondary mb-1.5">Vehicle Name</label>
+          <label className="block text-xs font-semibold text-text-secondary mb-1.5">
+            Vehicle Name <span className="text-error font-bold">*</span>
+          </label>
           <input
             type="text"
             name="name"
@@ -133,6 +144,9 @@ export function VehicleForm({ initialData, onSave, onCancel }: VehicleFormProps)
             placeholder="e.g. Volvo FH16"
             className={inputClass("name")}
           />
+          {errors.name && (
+            <p className="mt-1 text-[11px] text-error font-semibold animate-fadeIn">{errors.name}</p>
+          )}
         </div>
 
         <div>
@@ -239,6 +253,9 @@ export function VehicleForm({ initialData, onSave, onCancel }: VehicleFormProps)
             placeholder="0"
             className={inputClass("acquisitionCost")}
           />
+          {errors.acquisitionCost && (
+            <p className="mt-1 text-[11px] text-error font-semibold animate-fadeIn">{errors.acquisitionCost}</p>
+          )}
         </div>
 
         <div>
@@ -251,6 +268,9 @@ export function VehicleForm({ initialData, onSave, onCancel }: VehicleFormProps)
             placeholder="0"
             className={inputClass("odometer")}
           />
+          {errors.odometer && (
+            <p className="mt-1 text-[11px] text-error font-semibold animate-fadeIn">{errors.odometer}</p>
+          )}
         </div>
 
         <div className="hidden md:block"></div>
@@ -313,7 +333,9 @@ export function VehicleForm({ initialData, onSave, onCancel }: VehicleFormProps)
           disabled={isSubmitting}
           className="px-4 h-9 bg-primary text-text-on-primary rounded-m hover:bg-primary/95 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all shadow-small disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center cursor-pointer"
         >
-          {isSubmitting ? "Saving..." : "Save Vehicle"}
+          {isSubmitting 
+            ? (initialData ? "Updating..." : "Saving...") 
+            : (initialData ? "Update" : "Save")}
         </button>
       </div>
     </form>
