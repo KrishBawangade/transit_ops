@@ -850,47 +850,44 @@ export default function DriverDashboard() {
               </div>
 
               {/* Responsive SVG Chart */}
-              <div className="h-[160px] w-full mt-2 relative">
-                <svg viewBox="0 0 500 150" width="100%" height="150" className="text-primary overflow-visible">
+              <div className="h-[170px] w-full mt-2 relative">
+                <svg viewBox="0 0 500 160" width="100%" height="160" className="text-primary overflow-visible">
                   <defs>
                     <linearGradient id="chartGradient" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="rgba(59, 130, 246, 0.25)" />
+                      <stop offset="0%" stopColor="rgba(59, 130, 246, 0.2)" />
                       <stop offset="100%" stopColor="rgba(59, 130, 246, 0.0)" />
                     </linearGradient>
                   </defs>
                   
-                  {/* Grid guidelines */}
-                  <line x1="0" y1="30" x2="500" y2="30" stroke="#f3f4f6" strokeWidth="1" />
-                  <line x1="0" y1="70" x2="500" y2="70" stroke="#f3f4f6" strokeWidth="1" />
-                  <line x1="0" y1="110" x2="500" y2="110" stroke="#f3f4f6" strokeWidth="1" />
+                  {/* Grid horizontal guidelines */}
+                  <line x1="20" y1="30" x2="480" y2="30" stroke="#f3f4f6" strokeWidth="1" />
+                  <line x1="20" y1="70" x2="480" y2="70" stroke="#f3f4f6" strokeWidth="1" />
+                  <line x1="20" y1="110" x2="480" y2="110" stroke="#f3f4f6" strokeWidth="1" />
                   
                   {/* Gradient Area under curve */}
-                  <path d="M 10,130 Q 80,50 150,80 T 300,30 T 450,100 T 490,130 L 490,140 L 10,140 Z" fill="url(#chartGradient)" />
+                  <path d="M 40,110 L 110,70 L 180,90 L 250,50 L 320,70 L 390,110 L 460,130 L 460,135 L 40,135 Z" fill="url(#chartGradient)" />
                   
-                  {/* Curve line */}
-                  <path d="M 10,130 Q 80,50 150,80 T 300,30 T 450,100 T 490,130" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" />
+                  {/* Linear connect path */}
+                  <path d="M 40,110 L 110,70 L 180,90 L 250,50 L 320,70 L 390,110 L 460,130" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
                   
                   {/* Interactive Nodes */}
-                  <circle cx="10" cy="130" r="4" className="fill-white stroke-primary stroke-2 cursor-pointer hover:r-6 transition-all" />
-                  <circle cx="80" cy="50" r="4" className="fill-white stroke-primary stroke-2 cursor-pointer hover:r-6 transition-all" />
-                  <circle cx="150" cy="80" r="4" className="fill-white stroke-primary stroke-2 cursor-pointer hover:r-6 transition-all" />
-                  <circle cx="225" cy="60" r="4" className="fill-white stroke-primary stroke-2 cursor-pointer hover:r-6 transition-all" />
-                  <circle cx="300" cy="30" r="4" className="fill-white stroke-primary stroke-2 cursor-pointer hover:r-6 transition-all" />
-                  <circle cx="375" cy="65" r="4" className="fill-white stroke-primary stroke-2 cursor-pointer hover:r-6 transition-all" />
-                  <circle cx="450" cy="100" r="4" className="fill-white stroke-primary stroke-2 cursor-pointer hover:r-6 transition-all" />
-                  <circle cx="490" cy="130" r="4" className="fill-white stroke-primary stroke-2 cursor-pointer hover:r-6 transition-all" />
-                </svg>
+                  <circle cx="40" cy="110" r="4" className="fill-white stroke-primary stroke-2 cursor-pointer hover:r-6 transition-all" />
+                  <circle cx="110" cy="70" r="4" className="fill-white stroke-primary stroke-2 cursor-pointer hover:r-6 transition-all" />
+                  <circle cx="180" cy="90" r="4" className="fill-white stroke-primary stroke-2 cursor-pointer hover:r-6 transition-all" />
+                  <circle cx="250" cy="50" r="4" className="fill-white stroke-primary stroke-2 cursor-pointer hover:r-6 transition-all" />
+                  <circle cx="320" cy="70" r="4" className="fill-white stroke-primary stroke-2 cursor-pointer hover:r-6 transition-all" />
+                  <circle cx="390" cy="110" r="4" className="fill-white stroke-primary stroke-2 cursor-pointer hover:r-6 transition-all" />
+                  <circle cx="460" cy="130" r="4" className="fill-white stroke-primary stroke-2 cursor-pointer hover:r-6 transition-all" />
 
-                {/* Day Labels */}
-                <div className="flex justify-between text-[10px] font-bold text-text-secondary px-2 mt-1">
-                  <span>Mon (2)</span>
-                  <span>Tue (4)</span>
-                  <span>Wed (3)</span>
-                  <span>Thu (5)</span>
-                  <span>Fri (4)</span>
-                  <span>Sat (2)</span>
-                  <span>Sun (1)</span>
-                </div>
+                  {/* Day Labels directly inside SVG to ensure perfect alignment */}
+                  <text x="40" y="152" textAnchor="middle" className="fill-gray-400 text-[10px] font-bold">Mon (2)</text>
+                  <text x="110" y="152" textAnchor="middle" className="fill-gray-400 text-[10px] font-bold">Tue (4)</text>
+                  <text x="180" y="152" textAnchor="middle" className="fill-gray-400 text-[10px] font-bold">Wed (3)</text>
+                  <text x="250" y="152" textAnchor="middle" className="fill-gray-400 text-[10px] font-bold">Thu (5)</text>
+                  <text x="320" y="152" textAnchor="middle" className="fill-gray-400 text-[10px] font-bold">Fri (4)</text>
+                  <text x="390" y="152" textAnchor="middle" className="fill-gray-400 text-[10px] font-bold">Sat (2)</text>
+                  <text x="460" y="152" textAnchor="middle" className="fill-gray-400 text-[10px] font-bold">Sun (1)</text>
+                </svg>
               </div>
             </div>
 
