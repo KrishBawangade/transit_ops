@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useMemo } from "react";
+import Link from "next/link";
 import { 
   Users, 
   Plus, 
@@ -435,7 +436,13 @@ export default function DriverManagement() {
                   <div className="flex justify-between border-b border-gray-100 pb-2">
                     <span className="text-text-secondary font-semibold">Assigned Vehicle</span>
                     <span className="font-bold text-text-primary">
-                      {selectedDriver.assignedVehicle || "None (In Depot)"}
+                      {selectedDriver.assignedVehicle ? (
+                        <Link href="/vehicles/assignments" className="text-primary hover:underline">
+                          {selectedDriver.assignedVehicle}
+                        </Link>
+                      ) : (
+                        "None (In Depot)"
+                      )}
                     </span>
                   </div>
                   <div className="flex justify-between">

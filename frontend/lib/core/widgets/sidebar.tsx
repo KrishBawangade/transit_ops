@@ -14,7 +14,8 @@ import {
   TrendingUp,
   LogOut,
   User as UserIcon,
-  CreditCard
+  CreditCard,
+  ClipboardList
 } from "lucide-react";
 
 interface SidebarProps {
@@ -26,6 +27,7 @@ interface SidebarProps {
 const navItems = [
   { href: "/", label: "Dashboard", icon: LayoutDashboard },
   { href: "/vehicles", label: "Vehicles", icon: Truck, badge: "12" },
+  { href: "/vehicles/assignments", label: "Assignments", icon: ClipboardList },
   { href: "/drivers", label: "Drivers", icon: Users, badge: "8" },
   { href: "/trips", label: "Trips", icon: Route },
   { href: "/settings", label: "Settings", icon: Settings },
@@ -47,6 +49,9 @@ export function Sidebar({ isOpen, setIsOpen, isMobile = false }: SidebarProps) {
     }
     if (href === "/") {
       return pathname === "/";
+    }
+    if (href === "/vehicles") {
+      return pathname === "/vehicles" || (pathname.startsWith("/vehicles/") && !pathname.startsWith("/vehicles/assignments"));
     }
     return pathname.startsWith(href);
   };

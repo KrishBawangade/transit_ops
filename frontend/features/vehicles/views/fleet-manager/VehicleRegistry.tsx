@@ -67,13 +67,21 @@ export function VehicleRegistry() {
             Manage your transit fleet assets, status logs, capacity parameters, and compliance details.
           </p>
         </div>
-        <Link
-          href="/vehicles/new"
-          className="flex h-9 items-center gap-1.5 px-3.5 rounded-m bg-primary text-text-on-primary text-xs font-semibold hover:bg-primary/95 transition-all shadow-small self-start sm:self-auto cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary select-none"
-        >
-          <Plus size={16} />
-          <span>Add Vehicle</span>
-        </Link>
+        <div className="flex items-center gap-3 self-start sm:self-auto select-none">
+          <Link
+            href="/vehicles/assignments"
+            className="flex h-9 items-center gap-1.5 px-3.5 border border-border-app rounded-m bg-surface-app text-text-secondary hover:text-text-primary hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all shadow-small cursor-pointer"
+          >
+            <span>Vehicle Assignments</span>
+          </Link>
+          <Link
+            href="/vehicles/new"
+            className="flex h-9 items-center gap-1.5 px-3.5 rounded-m bg-primary text-text-on-primary text-xs font-semibold hover:bg-primary/95 transition-all shadow-small focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary cursor-pointer"
+          >
+            <Plus size={16} />
+            <span>Add Vehicle</span>
+          </Link>
+        </div>
       </div>
 
       {/* Filter and Search Section */}
