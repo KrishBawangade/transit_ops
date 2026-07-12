@@ -332,6 +332,13 @@ export default function FleetManagerDashboard() {
         </div>
 
         <div className="flex items-center gap-2.5 self-start md:self-center">
+          <Link
+            href="/driver-dashboard"
+            className="flex h-9 items-center gap-1.5 px-3 bg-primary text-text-on-primary text-xs font-bold rounded-m transition-all cursor-pointer active:scale-95 shadow-small hover:bg-primary/95"
+          >
+            <Users size={13} />
+            <span>Driver POV</span>
+          </Link>
           <div className="text-xs text-text-secondary flex items-center gap-1.5 bg-surface-app border border-border-app px-3.5 py-2 rounded-m shadow-small">
             <Clock size={14} className="text-text-muted" />
             <span>{lastSyncTime}</span>
@@ -377,20 +384,12 @@ export default function FleetManagerDashboard() {
             <span>Asset Lifecycle</span>
           </Link>
           <Link
-            href="/drivers"
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-success-light hover:bg-success/10 border border-success/20 text-success text-xs font-bold rounded-m transition-all cursor-pointer active:scale-95 shadow-small"
-          >
-            <Users size={13} />
-            <span>Driver Roster</span>
-          </Link>
-          <Link
             href="/vehicles/assignments"
             className="flex items-center gap-1.5 px-3 py-1.5 bg-primary-light hover:bg-primary/10 border border-primary/20 text-primary text-xs font-bold rounded-m transition-all cursor-pointer active:scale-95 shadow-small"
           >
             <Users size={13} />
             <span>Manage Assignments</span>
           </Link>
-
           <button
             onClick={() => setActiveActionModal("dispatch")}
             className="flex items-center gap-1.5 px-3 py-1.5 bg-secondary-light hover:bg-secondary/10 border border-secondary/20 text-secondary text-xs font-bold rounded-m transition-all cursor-pointer active:scale-95 shadow-small"
